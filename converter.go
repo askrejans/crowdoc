@@ -339,8 +339,11 @@ func renderImage(result *[]string, alt, imgPath string, doc Document) {
 
 // escapeLaTeX escapes special LaTeX characters in a string.
 func escapeLaTeX(s string) string {
-	// Order matters: backslash first
-	s = strings.ReplaceAll(s, `\`, `\textbackslash{}`)
+	// Replace chars that produce multi-char sequences containing {} with
+	// placeholders first, so subsequent { and } escaping won't corrupt them.
+	s = strings.ReplaceAll(s, `\`, "\x00BSLASH\x00")
+	s = strings.ReplaceAll(s, `~`, "\x00TILDE\x00")
+	s = strings.ReplaceAll(s, `^`, "\x00CARET\x00")
 	s = strings.ReplaceAll(s, `&`, `\&`)
 	s = strings.ReplaceAll(s, `%`, `\%`)
 	s = strings.ReplaceAll(s, `$`, `\$`)
@@ -348,8 +351,9 @@ func escapeLaTeX(s string) string {
 	s = strings.ReplaceAll(s, `_`, `\_`)
 	s = strings.ReplaceAll(s, `{`, `\{`)
 	s = strings.ReplaceAll(s, `}`, `\}`)
-	s = strings.ReplaceAll(s, `~`, `\textasciitilde{}`)
-	s = strings.ReplaceAll(s, `^`, `\textasciicircum{}`)
+	s = strings.ReplaceAll(s, "\x00BSLASH\x00", `\textbackslash{}`)
+	s = strings.ReplaceAll(s, "\x00TILDE\x00", `\textasciitilde{}`)
+	s = strings.ReplaceAll(s, "\x00CARET\x00", `\textasciicircum{}`)
 	return s
 }
 
