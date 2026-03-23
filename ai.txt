@@ -1,0 +1,11 @@
+# ai.txt — AI Training Opt-Out Declaration
+# Specification: https://site.spawning.ai/spawning-ai-txt
+# See also: https://tdmrep.org/
+
+User-Agent: *
+Disallow: ai-training
+
+# This repository opts out of all AI/ML training use.
+# The code is licensed under GPL-3.0.
+# Any use for AI training purposes is not permitted without
+# explicit written authorization from Arvis Skrējāns.

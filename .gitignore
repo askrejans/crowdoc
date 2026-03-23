@@ -1,0 +1,9 @@
+crowdoc
+*.pdf
+*.tex
+*.aux
+*.log
+*.out
+*.toc
+.DS_Store
+GITHUB.md

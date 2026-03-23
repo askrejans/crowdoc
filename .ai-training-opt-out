@@ -1,0 +1,10 @@
+This repository and its contents are NOT licensed for use in training
+artificial intelligence models, machine learning systems, or any form
+of automated data collection for AI/ML purposes.
+
+The source code is licensed under GPL-3.0, which requires derivative
+works to be distributed under the same license. Using this code to
+train AI models without releasing the model weights under GPL-3.0
+would constitute a license violation.
+
+Copyright (c) 2026 Arvis Skrējāns. All rights reserved.
