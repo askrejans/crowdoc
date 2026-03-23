@@ -1,5 +1,6 @@
 crowdoc
 *.pdf
+!examples/*.pdf
 *.tex
 *.aux
 *.log
@@ -7,3 +8,4 @@ crowdoc
 *.toc
 .DS_Store
 GITHUB.md
+dist/

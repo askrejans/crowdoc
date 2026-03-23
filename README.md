@@ -97,18 +97,23 @@ crowdoc --watch document.md            # regenerates on every save
 
 ### `legal`
 Gold accents, formal typography, signature blocks. Designed for contracts, NDAs, and legal agreements. Auto-detected for documents with "agreement", "contract", or "NDA" in the title.
+([source](examples/legal-agreement.md) | [pdf](examples/legal-agreement.pdf))
 
 ### `technical`
 Sans-serif body text, wider margins for code blocks, GitHub-inspired color palette. Ideal for API docs, specifications, and technical guides.
+([source](examples/technical-doc.md) | [pdf](examples/technical-doc.pdf))
 
 ### `report`
 Professional cover page with dark header band, serif body, clean section formatting. Great for business reports, proposals, and analyses.
+([source](examples/business-report.md) | [pdf](examples/business-report.pdf))
 
 ### `minimal`
 No title page, no frills. Clean serif typography with subtle formatting. Perfect for notes, essays, and general writing.
+([source](examples/minimal-notes.md) | [pdf](examples/minimal-notes.pdf))
 
 ### `letter`
 Formal business letter layout with sender/recipient blocks, date, and subject line. Includes signature area.
+([source](examples/business-letter.md) | [pdf](examples/business-letter.pdf))
 
 ## Frontmatter Reference
 
