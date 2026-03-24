@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 // mdToLaTeX converts markdown body text to LaTeX.
@@ -77,6 +78,7 @@ func mdToLaTeX(s string, doc Document) string {
 	}
 
 	inTable := false
+	tableColCount := 0
 
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
@@ -115,9 +117,9 @@ func mdToLaTeX(s string, doc Document) string {
 			if !inTable {
 				inTable = true
 				cells := parseTableRow(trimmed)
-				ncols := len(cells)
+				tableColCount = len(cells)
 				// Use X columns for auto-width
-				colSpec := strings.Repeat("X", ncols)
+				colSpec := strings.Repeat("X", tableColCount)
 				result = append(result, `\begin{tabularx}{\textwidth}{`+colSpec+`}`)
 				result = append(result, `\toprule`)
 				row := formatTableCells(cells, true, doc)
@@ -125,6 +127,11 @@ func mdToLaTeX(s string, doc Document) string {
 				result = append(result, `\midrule`)
 			} else {
 				cells := parseTableRow(trimmed)
+				// Clamp to header column count: merge excess cells into the last column
+				if tableColCount > 0 && len(cells) > tableColCount {
+					merged := strings.Join(cells[tableColCount-1:], " | ")
+					cells = append(cells[:tableColCount-1], merged)
+				}
 				row := formatTableCells(cells, false, doc)
 				result = append(result, row+` \\`)
 			}
@@ -337,8 +344,36 @@ func renderImage(result *[]string, alt, imgPath string, doc Document) {
 	*result = append(*result, `\end{figure}`)
 }
 
+// stripEmoji removes emoji and other symbol characters that most LaTeX fonts cannot render.
+func stripEmoji(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		// Skip emoji and miscellaneous symbol blocks
+		if r > 0x1F000 { // Supplemental symbols, emoticons, etc.
+			continue
+		}
+		switch {
+		case r >= 0x2600 && r <= 0x27BF: // Misc symbols, dingbats (⚡, ✅, ❌, etc.)
+			continue
+		case r >= 0x2B50 && r <= 0x2B55: // Stars, circles
+			continue
+		case r >= 0xFE00 && r <= 0xFE0F: // Variation selectors
+			continue
+		case r >= 0x200D && r <= 0x200D: // Zero-width joiner
+			continue
+		case unicode.Is(unicode.So, r) && r > 0x00FF: // Other symbols above Latin-1
+			continue
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
 // escapeLaTeX escapes special LaTeX characters in a string.
 func escapeLaTeX(s string) string {
+	// Strip emoji/symbol characters that LaTeX fonts cannot render
+	s = stripEmoji(s)
 	// Replace chars that produce multi-char sequences containing {} with
 	// placeholders first, so subsequent { and } escaping won't corrupt them.
 	s = strings.ReplaceAll(s, `\`, "\x00BSLASH\x00")
