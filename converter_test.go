@@ -527,8 +527,8 @@ func TestMdToLaTeX_InlineItalic(t *testing.T) {
 func TestMdToLaTeX_InlineCode(t *testing.T) {
 	input := "Use `fmt.Println` here"
 	got := mdToLaTeX(input, Document{})
-	if !strings.Contains(got, `\verb`) {
-		t.Errorf("should contain verb for inline code, got %q", got)
+	if !strings.Contains(got, `\texttt{fmt.Println}`) {
+		t.Errorf("should contain texttt for inline code, got %q", got)
 	}
 }
 
@@ -639,11 +639,11 @@ func TestInlineFormat_ItalicSingleAsterisk(t *testing.T) {
 }
 
 func TestInlineFormat_InlineCodeWithSpecialChars(t *testing.T) {
-	// Inline code should un-escape LaTeX chars back to raw
+	// Inline code should un-escape LaTeX chars and wrap in texttt
 	input := escapeLaTeX("use `my_var` here")
 	got := inlineFormat(input, Document{})
-	if !strings.Contains(got, `\verb`) {
-		t.Errorf("should use verb for inline code, got %q", got)
+	if !strings.Contains(got, `\texttt{my\_var}`) {
+		t.Errorf("should use texttt for inline code with escaped underscore, got %q", got)
 	}
 }
 

@@ -7,24 +7,25 @@ import (
 	"strings"
 )
 
-const version = "1.0.1"
+const version = "1.1.0"
 
 // CLI flags parsed from os.Args
 type options struct {
-	inputPath   string
-	outputPath  string
-	style       string
-	batch       bool
-	batchDir    string
-	batchOutDir string
-	watch       bool
-	listStyles  bool
-	showVersion bool
-	toc         *bool // nil = auto, true = force on, false = force off
-	noTitlePage bool
+	inputPath    string
+	outputPath   string
+	style        string
+	templatePath string // --template: path to custom .tex template file
+	batch        bool
+	batchDir     string
+	batchOutDir  string
+	watch        bool
+	listStyles   bool
+	showVersion  bool
+	toc          *bool // nil = auto, true = force on, false = force off
+	noTitlePage  bool
 	noSignatures bool
-	fontSize    int
-	outputTeX   bool // --tex: also output the intermediate .tex file
+	fontSize     int
+	outputTeX    bool // --tex: also output the intermediate .tex file
 }
 
 func main() {
@@ -112,6 +113,12 @@ func parseArgs() options {
 			opts.noSignatures = true
 		case arg == "--tex":
 			opts.outputTeX = true
+		case arg == "--template" || arg == "-t":
+			i++
+			if i >= len(args) {
+				fatal("--template requires a path to a .tex template file")
+			}
+			opts.templatePath = args[i]
 		case arg == "--font-size":
 			i++
 			if i >= len(args) {
@@ -176,14 +183,14 @@ func convertFile(opts options) error {
 		outputPath = strings.TrimSuffix(opts.inputPath, ext) + ".pdf"
 	}
 
-	if err := renderAndCompile(doc, outputPath); err != nil {
+	if err := renderAndCompile(doc, outputPath, opts.templatePath); err != nil {
 		return err
 	}
 
 	// Optionally output intermediate .tex file
 	if opts.outputTeX {
 		texOut := strings.TrimSuffix(outputPath, ".pdf") + ".tex"
-		latex := renderLaTeX(doc)
+		latex := renderLaTeX(doc, opts.templatePath)
 		if err := os.WriteFile(texOut, []byte(latex), 0644); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: could not write .tex file: %v\n", err)
 		} else {

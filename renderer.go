@@ -11,8 +11,13 @@ import (
 )
 
 // renderAndCompile generates LaTeX from the document and compiles it to PDF.
-func renderAndCompile(doc Document, outputPath string) error {
-	latex := renderLaTeX(doc)
+// customTemplatePath is optional; if non-empty, it overrides the built-in style template.
+func renderAndCompile(doc Document, outputPath string, customTemplatePath ...string) error {
+	tmplPath := ""
+	if len(customTemplatePath) > 0 {
+		tmplPath = customTemplatePath[0]
+	}
+	latex := renderLaTeX(doc, tmplPath)
 
 	tmpDir, err := os.MkdirTemp("", "crowdoc-*")
 	if err != nil {
@@ -54,8 +59,18 @@ func renderAndCompile(doc Document, outputPath string) error {
 }
 
 // renderLaTeX executes the style template with the document data.
-func renderLaTeX(doc Document) string {
-	tmplStr := getStyleTemplate(doc.Style)
+// If customTemplatePath is non-empty, it reads that file instead of using the built-in style.
+func renderLaTeX(doc Document, customTemplatePath ...string) string {
+	var tmplStr string
+	if len(customTemplatePath) > 0 && customTemplatePath[0] != "" {
+		data, err := os.ReadFile(customTemplatePath[0])
+		if err != nil {
+			fatal("failed to read custom template %s: %v", customTemplatePath[0], err)
+		}
+		tmplStr = string(data)
+	} else {
+		tmplStr = getStyleTemplate(doc.Style)
+	}
 
 	funcMap := template.FuncMap{
 		"escapeLaTeX": escapeLaTeX,

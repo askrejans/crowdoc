@@ -24,6 +24,14 @@ func mdToLaTeX(s string, doc Document) string {
 	var blockquoteLines []string
 
 	closeAllLists := func() {
+		// Safety: if the last thing we emitted was a \begin{list} with no \item,
+		// add a phantom item to prevent "missing \item" LaTeX error.
+		if len(result) > 0 && len(listStack) > 0 {
+			lastLine := result[len(result)-1]
+			if strings.HasPrefix(lastLine, `\begin{itemize}`) || strings.HasPrefix(lastLine, `\begin{enumerate}`) {
+				result = append(result, `  \item {}`)
+			}
+		}
 		for len(listStack) > 0 {
 			last := listStack[len(listStack)-1]
 			listStack = listStack[:len(listStack)-1]
@@ -393,7 +401,10 @@ func escapeLaTeX(s string) string {
 }
 
 // inlineFormat applies inline Markdown formatting to an already-escaped LaTeX string.
-func inlineFormat(s string, doc Document) string {
+// When inTableCell is true, \verb is avoided (illegal inside tabularx); \texttt is used instead.
+func inlineFormat(s string, doc Document, opts ...bool) string {
+	inTableCell := len(opts) > 0 && opts[0]
+	_ = inTableCell // used in inline code section below
 	// Math: restore $...$ for inline math and $$...$$ for display math
 	// We need to un-escape $ signs that are part of math delimiters
 	// Display math: \$\$...\$\$
@@ -438,12 +449,12 @@ func inlineFormat(s string, doc Document) string {
 	})
 
 	// Inline code: `text` — must come after bold/italic to avoid conflicts
-	// Use \verb for inline code when possible (handles special chars natively)
-	// Fall back to \texttt with manual escaping if content contains |
+	// \verb is FORBIDDEN inside tabularx, macro arguments, captions, footnotes.
+	// We always use \texttt{} with manual escaping for maximum compatibility.
 	code := regexp.MustCompile("`([^`]+)`")
 	s = code.ReplaceAllStringFunc(s, func(m string) string {
 		inner := m[1 : len(m)-1]
-		// Un-escape LaTeX escapes back to raw chars for \verb
+		// Un-escape LaTeX escapes back to raw chars first
 		inner = strings.ReplaceAll(inner, `\textbackslash{}`, `\`)
 		inner = strings.ReplaceAll(inner, `\&`, `&`)
 		inner = strings.ReplaceAll(inner, `\%`, `%`)
@@ -454,18 +465,18 @@ func inlineFormat(s string, doc Document) string {
 		inner = strings.ReplaceAll(inner, `\}`, `}`)
 		inner = strings.ReplaceAll(inner, `\textasciitilde{}`, `~`)
 		inner = strings.ReplaceAll(inner, `\textasciicircum{}`, `^`)
-		// Choose a delimiter that's not in the content
-		for _, delim := range []string{"|", "!", "@", "+"} {
-			if !strings.Contains(inner, delim) {
-				return `\verb` + delim + inner + delim
-			}
-		}
-		// Fallback: use \texttt with escaped underscores
+		// Re-escape for \texttt{} context (safe in all LaTeX environments)
+		// Order matters: backslash first (before other replacements introduce more backslashes)
+		inner = strings.ReplaceAll(inner, `\`, `\textbackslash{}`)
+		inner = strings.ReplaceAll(inner, `~`, `\textasciitilde{}`)
+		inner = strings.ReplaceAll(inner, `^`, `\textasciicircum{}`)
 		inner = strings.ReplaceAll(inner, `_`, `\_`)
 		inner = strings.ReplaceAll(inner, `#`, `\#`)
 		inner = strings.ReplaceAll(inner, `$`, `\$`)
 		inner = strings.ReplaceAll(inner, `%`, `\%`)
 		inner = strings.ReplaceAll(inner, `&`, `\&`)
+		inner = strings.ReplaceAll(inner, `{`, `\{`)
+		inner = strings.ReplaceAll(inner, `}`, `\}`)
 		return `\texttt{` + inner + `}`
 	})
 
@@ -477,13 +488,21 @@ func inlineFormat(s string, doc Document) string {
 			return m
 		}
 		text := matches[1]
-		url := matches[2]
-		// Un-escape URL
-		url = strings.ReplaceAll(url, `\_`, `_`)
-		url = strings.ReplaceAll(url, `\#`, `#`)
-		url = strings.ReplaceAll(url, `\%`, `%`)
-		url = strings.ReplaceAll(url, `\&`, `&`)
-		return fmt.Sprintf(`\href{%s}{%s}\footnote{\url{%s}}`, url, text, url)
+		rawURL := matches[2]
+		// Un-escape URL back to raw characters
+		rawURL = strings.ReplaceAll(rawURL, `\_`, `_`)
+		rawURL = strings.ReplaceAll(rawURL, `\#`, `#`)
+		rawURL = strings.ReplaceAll(rawURL, `\%`, `%`)
+		rawURL = strings.ReplaceAll(rawURL, `\&`, `&`)
+		rawURL = strings.ReplaceAll(rawURL, `\textasciitilde{}`, `~`)
+		// For \href: # must be escaped as \# (hyperref parameter token)
+		hrefURL := strings.ReplaceAll(rawURL, `#`, `\#`)
+		hrefURL = strings.ReplaceAll(hrefURL, `%`, `\%`)
+		// For relative .md links, just show as text (no clickable href)
+		if strings.HasSuffix(rawURL, ".md") || strings.Contains(rawURL, ".md#") {
+			return fmt.Sprintf(`\textbf{%s}`, text)
+		}
+		return fmt.Sprintf(`\href{%s}{%s}\footnote{\url{%s}}`, hrefURL, text, rawURL)
 	})
 
 	// Footnote references: [^id] → LaTeX footnote

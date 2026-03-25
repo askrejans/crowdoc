@@ -108,8 +108,33 @@ func parseMarkdown(md string, inputDir string) Document {
 	var currentSection *Section
 	var preambleLines []string
 	inSection := false
+	inCodeFence := false // track fenced code blocks to avoid splitting on # inside them
 
 	for _, line := range bodyLines {
+		trimmedLine := strings.TrimSpace(line)
+
+		// Track fenced code blocks — headings inside code blocks are NOT section breaks
+		if strings.HasPrefix(trimmedLine, "```") {
+			inCodeFence = !inCodeFence
+			// Pass through to section content / preamble (do not treat as heading)
+			if inSection && currentSection != nil {
+				currentSection.Content += line + "\n"
+			} else {
+				preambleLines = append(preambleLines, line)
+			}
+			continue
+		}
+
+		// Inside a code block, everything is content — never parse headings
+		if inCodeFence {
+			if inSection && currentSection != nil {
+				currentSection.Content += line + "\n"
+			} else {
+				preambleLines = append(preambleLines, line)
+			}
+			continue
+		}
+
 		if strings.HasPrefix(line, "# ") && doc.Title == "" {
 			doc.Title = strings.TrimPrefix(line, "# ")
 			continue
