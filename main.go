@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const version = "1.1.0"
+const version = "1.2.0"
 
 // CLI flags parsed from os.Args
 type options struct {
