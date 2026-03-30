@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const version = "1.2.1"
+const version = "1.3.0"
 
 // CLI flags parsed from os.Args
 type options struct {
@@ -151,14 +151,62 @@ func parseArgs() options {
 	return opts
 }
 
-func convertFile(opts options) error {
-	mdBytes, err := os.ReadFile(opts.inputPath)
-	if err != nil {
-		return fmt.Errorf("failed to read input file: %w", err)
-	}
+// supportedExts lists all file extensions that crowdoc can convert.
+var supportedExts = map[string]bool{
+	".md": true, ".markdown": true,
+	".csv": true, ".xlsx": true,
+	".txt": true, ".html": true, ".htm": true,
+}
 
+// detectFormat returns the input format based on file extension.
+func detectFormat(path string) string {
+	ext := strings.ToLower(filepath.Ext(path))
+	switch ext {
+	case ".md", ".markdown":
+		return "markdown"
+	case ".csv":
+		return "csv"
+	case ".xlsx":
+		return "xlsx"
+	case ".xls":
+		return "xls"
+	case ".txt":
+		return "txt"
+	case ".html", ".htm":
+		return "html"
+	default:
+		return "markdown"
+	}
+}
+
+func convertFile(opts options) error {
 	inputDir, _ := filepath.Abs(filepath.Dir(opts.inputPath))
-	doc := parseMarkdown(string(mdBytes), inputDir)
+
+	var doc Document
+	var err error
+
+	switch detectFormat(opts.inputPath) {
+	case "csv":
+		doc, err = parseCSVFile(opts.inputPath, inputDir)
+	case "xlsx":
+		doc, err = parseXLSXFile(opts.inputPath, inputDir)
+	case "xls":
+		return fmt.Errorf("old .xls binary format is not supported — please save as .xlsx")
+	case "txt":
+		doc, err = parseTXTFile(opts.inputPath, inputDir)
+	case "html":
+		doc, err = parseHTMLFile(opts.inputPath, inputDir)
+	default:
+		var mdBytes []byte
+		mdBytes, err = os.ReadFile(opts.inputPath)
+		if err != nil {
+			return fmt.Errorf("failed to read input file: %w", err)
+		}
+		doc = parseMarkdown(string(mdBytes), inputDir)
+	}
+	if err != nil {
+		return err
+	}
 
 	// Apply CLI overrides
 	if opts.style != "" {
@@ -214,13 +262,18 @@ func runBatch(opts options) {
 		if err != nil {
 			return nil
 		}
-		if !info.IsDir() && strings.HasSuffix(path, ".md") {
-			base := strings.ToLower(filepath.Base(path))
-			if base == "readme.md" || base == "claude.md" {
-				return nil
-			}
-			files = append(files, path)
+		if info.IsDir() {
+			return nil
 		}
+		ext := strings.ToLower(filepath.Ext(path))
+		if !supportedExts[ext] {
+			return nil
+		}
+		base := strings.ToLower(filepath.Base(path))
+		if base == "readme.md" || base == "claude.md" {
+			return nil
+		}
+		files = append(files, path)
 		return nil
 	})
 
@@ -233,7 +286,8 @@ func runBatch(opts options) {
 	success := 0
 	for idx, f := range files {
 		rel, _ := filepath.Rel(inputDir, f)
-		outPath := filepath.Join(outputDir, strings.TrimSuffix(rel, ".md")+".pdf")
+		ext := filepath.Ext(rel)
+		outPath := filepath.Join(outputDir, strings.TrimSuffix(rel, ext)+".pdf")
 		fmt.Printf("  [%d/%d] %s", idx+1, len(files), rel)
 
 		batchOpts := opts
@@ -264,14 +318,16 @@ func printStyleList() {
 }
 
 func printUsage() {
-	fmt.Printf(`crowdoc v%s — Universal Markdown-to-PDF converter
+	fmt.Printf(`crowdoc v%s — Universal document-to-PDF converter
 https://github.com/askrejans/crowdoc
 
+Supported formats: .md .csv .xlsx .txt .html
+
 Usage:
-  crowdoc <input.md> [output.pdf]          Convert a single file
+  crowdoc <input> [output.pdf]             Convert a single file
   crowdoc --batch <dir/> [outdir/]         Batch convert directory
-  crowdoc --watch <input.md>               Watch and regenerate on change
-  crowdoc --style <style> <input.md>       Convert with style override
+  crowdoc --watch <input>                  Watch and regenerate on change
+  crowdoc --style <style> <input>          Convert with style override
   crowdoc --list-styles                    Show available styles
   crowdoc --version                        Show version
 

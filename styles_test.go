@@ -8,7 +8,7 @@ import (
 // ─── getStyleTemplate ────────────────────────────────────────────────────────
 
 func TestGetStyleTemplate_AllStyles(t *testing.T) {
-	styles := []string{"legal", "technical", "report", "minimal", "letter"}
+	styles := []string{"legal", "technical", "report", "minimal", "letter", "academic", "invoice", "memo"}
 	for _, s := range styles {
 		tmpl := getStyleTemplate(s)
 		if tmpl == "" {
@@ -39,7 +39,7 @@ func TestGetStyleTemplate_EmptyDefaultsToReport(t *testing.T) {
 
 func TestGetStyleTemplate_ContainsRequiredColors(t *testing.T) {
 	requiredColors := []string{"headingcolor", "rulecolor", "accentcolor", "codebg", "statusgreen", "statusamber", "statusblue"}
-	styles := []string{"legal", "technical", "report", "minimal", "letter"}
+	styles := []string{"legal", "technical", "report", "minimal", "letter", "academic", "invoice", "memo"}
 
 	for _, s := range styles {
 		tmpl := getStyleTemplate(s)
@@ -52,7 +52,7 @@ func TestGetStyleTemplate_ContainsRequiredColors(t *testing.T) {
 }
 
 func TestGetStyleTemplate_ContainsFontSize(t *testing.T) {
-	styles := []string{"legal", "technical", "report", "minimal", "letter"}
+	styles := []string{"legal", "technical", "report", "minimal", "letter", "academic", "invoice", "memo"}
 	for _, s := range styles {
 		tmpl := getStyleTemplate(s)
 		if !strings.Contains(tmpl, "FontSize") {
@@ -62,7 +62,7 @@ func TestGetStyleTemplate_ContainsFontSize(t *testing.T) {
 }
 
 func TestGetStyleTemplate_ContainsLastPage(t *testing.T) {
-	styles := []string{"legal", "technical", "report", "minimal", "letter"}
+	styles := []string{"legal", "technical", "report", "minimal", "letter", "academic", "invoice", "memo"}
 	for _, s := range styles {
 		tmpl := getStyleTemplate(s)
 		if !strings.Contains(tmpl, "lastpage") {
@@ -72,7 +72,7 @@ func TestGetStyleTemplate_ContainsLastPage(t *testing.T) {
 }
 
 func TestGetStyleTemplate_UsesCorrectDelimiters(t *testing.T) {
-	styles := []string{"legal", "technical", "report", "minimal", "letter"}
+	styles := []string{"legal", "technical", "report", "minimal", "letter", "academic", "invoice", "memo"}
 	for _, s := range styles {
 		tmpl := getStyleTemplate(s)
 		// Templates use << >> delimiters, should contain at least one

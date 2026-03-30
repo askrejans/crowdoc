@@ -1,21 +1,25 @@
 # crowdoc
 
-**Universal Markdown-to-PDF converter with beautiful LaTeX typography.**
+**Universal document-to-PDF converter with beautiful LaTeX typography.**
 
-Transform any Markdown file into a professionally typeset PDF. Whether you're writing technical documentation, business reports, legal agreements, or simple notes, crowdoc produces stunning output with zero configuration.
+Transform Markdown, CSV, Excel, HTML, or plain text files into professionally typeset PDFs. Whether you're writing technical documentation, formatting spreadsheet data, converting web articles, or producing legal agreements, crowdoc produces stunning output with zero configuration.
 
 ## Features
 
+- **Multi-format input** -- Markdown, CSV, XLSX (Excel), HTML, and plain text
 - **8 built-in styles** -- legal, technical, report, minimal, letter, academic, invoice, memo
 - **Full Markdown support** -- headings, bold/italic, lists, tables, code blocks, images, blockquotes, footnotes, links
+- **Spreadsheet support** -- CSV and XLSX files rendered as formatted tables with auto-detected delimiters
+- **HTML conversion** -- headings, tables, lists, code blocks, links, and inline formatting preserved
 - **Code blocks** with syntax highlighting via LaTeX `listings`
 - **Math support** -- inline `$E=mc^2$` and display `$$\sum_{i=1}^n$$`
 - **Auto-detected styling** -- crowdoc picks the right style based on your content
 - **Table of contents** -- auto-generated for documents with 3+ sections
 - **Image embedding** -- `![caption](path.png)` rendered with captions
 - **Frontmatter control** -- fine-tune every aspect via YAML metadata
-- **Batch conversion** -- convert entire directories at once
+- **Batch conversion** -- convert entire directories at once (all supported formats)
 - **Watch mode** -- regenerate on file save
+- **Cross-platform** -- macOS, Linux, Windows (auto-detects LaTeX engine)
 - **Zero Go dependencies** -- single binary, just needs LaTeX
 
 ## Installation
@@ -75,29 +79,35 @@ Install [MiKTeX](https://miktex.org/download) or [TeX Live](https://tug.org/texl
 ### Single file
 
 ```bash
-crowdoc document.md                    # outputs document.pdf
-crowdoc document.md output.pdf         # custom output path
-crowdoc --style technical spec.md      # force a style
+crowdoc document.md                    # Markdown → PDF
+crowdoc report.csv                     # CSV → PDF (formatted table)
+crowdoc data.xlsx                      # Excel → PDF (all sheets)
+crowdoc article.html                   # HTML → PDF
+crowdoc notes.txt                      # Plain text → PDF
+crowdoc document.md output.pdf         # Custom output path
+crowdoc --style technical spec.md      # Force a style
 ```
 
 ### Batch conversion
 
 ```bash
-crowdoc --batch docs/                  # outputs to docs/pdf/
-crowdoc --batch docs/ output/          # custom output directory
+crowdoc --batch docs/                  # Convert all supported files to docs/pdf/
+crowdoc --batch docs/ output/          # Custom output directory
 ```
+
+Batch mode processes all supported formats: `.md`, `.csv`, `.xlsx`, `.txt`, `.html`.
 
 ### Watch mode
 
 ```bash
-crowdoc --watch document.md            # regenerates on every save
+crowdoc --watch document.md            # Regenerates on every save
 ```
 
 ### Options
 
 ```
   -s, --style <name>     Style preset (legal, technical, report, minimal, letter, academic, invoice, memo)
-  -b, --batch <dir>      Batch convert all .md files in directory
+  -b, --batch <dir>      Batch convert all supported files in directory
   -w, --watch            Watch file for changes and regenerate
       --toc              Force table of contents
       --no-toc           Disable table of contents
@@ -142,6 +152,27 @@ Bold invoice header with number/date/status, clean sans-serif body optimized for
 ### `memo`
 Structured TO/FROM/DATE/RE header block with rose accent color and sans-serif typography. Auto-detected for documents with "memo", "memorandum", or "notice" in the title.
 ([source](examples/memo-internal.md) | [pdf](examples/memo-internal.pdf))
+
+## Input Formats
+
+### Markdown (`.md`, `.markdown`)
+Full Markdown support with YAML frontmatter, sections, code blocks, tables, math, images, and footnotes.
+
+### CSV (`.csv`)
+Auto-detects delimiter (comma, semicolon, tab). First row becomes table header. Title derived from filename. Default style: `report`.
+([source](examples/quarterly-sales.csv) | [pdf](examples/quarterly-sales.pdf))
+
+### Excel (`.xlsx`)
+Reads all sheets — each becomes a section with a formatted table. Supports shared strings, numbers, and booleans. Parsed using Go stdlib only (no external dependencies). Old `.xls` binary format is not supported.
+([source](examples/employee-data.xlsx) | [pdf](examples/employee-data.pdf))
+
+### HTML (`.html`, `.htm`)
+Converts headings, paragraphs, tables, lists, code blocks, blockquotes, links, images, and inline formatting (bold, italic, code, strikethrough). Strips `<script>`, `<style>`, `<nav>`, and `<footer>` blocks. Title extracted from `<title>` or first `<h1>`.
+([source](examples/article-webpage.html) | [pdf](examples/article-webpage.pdf))
+
+### Plain Text (`.txt`)
+First line becomes title. ALL CAPS lines promoted to section headings. Indented blocks (4 spaces or tab) become code blocks. Bullet and numbered lists preserved. Default style: `minimal`.
+([source](examples/plain-readme.txt) | [pdf](examples/plain-readme.pdf))
 
 ## Frontmatter Reference
 

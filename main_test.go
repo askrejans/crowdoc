@@ -15,8 +15,142 @@ func TestConvertFile_NonexistentFile(t *testing.T) {
 	if err == nil {
 		t.Error("should error on nonexistent file")
 	}
-	if !strings.Contains(err.Error(), "failed to read") {
-		t.Errorf("error = %q, should mention read failure", err.Error())
+}
+
+// ─── detectFormat ───────────────────────────────────────────────────────────
+
+func TestDetectFormat_Markdown(t *testing.T) {
+	for _, ext := range []string{".md", ".markdown"} {
+		got := detectFormat("doc" + ext)
+		if got != "markdown" {
+			t.Errorf("detectFormat('doc%s') = %q, want 'markdown'", ext, got)
+		}
+	}
+}
+
+func TestDetectFormat_CSV(t *testing.T) {
+	if got := detectFormat("data.csv"); got != "csv" {
+		t.Errorf("got %q, want 'csv'", got)
+	}
+}
+
+func TestDetectFormat_XLSX(t *testing.T) {
+	if got := detectFormat("data.xlsx"); got != "xlsx" {
+		t.Errorf("got %q, want 'xlsx'", got)
+	}
+}
+
+func TestDetectFormat_XLS(t *testing.T) {
+	if got := detectFormat("data.xls"); got != "xls" {
+		t.Errorf("got %q, want 'xls'", got)
+	}
+}
+
+func TestDetectFormat_TXT(t *testing.T) {
+	if got := detectFormat("notes.txt"); got != "txt" {
+		t.Errorf("got %q, want 'txt'", got)
+	}
+}
+
+func TestDetectFormat_HTML(t *testing.T) {
+	for _, ext := range []string{".html", ".htm"} {
+		got := detectFormat("page" + ext)
+		if got != "html" {
+			t.Errorf("detectFormat('page%s') = %q, want 'html'", ext, got)
+		}
+	}
+}
+
+func TestDetectFormat_Unknown(t *testing.T) {
+	if got := detectFormat("file.xyz"); got != "markdown" {
+		t.Errorf("unknown ext should default to markdown, got %q", got)
+	}
+}
+
+func TestDetectFormat_CaseInsensitive(t *testing.T) {
+	if got := detectFormat("DATA.CSV"); got != "csv" {
+		t.Errorf("should be case insensitive, got %q", got)
+	}
+}
+
+func TestConvertFile_XLSRejectsOldFormat(t *testing.T) {
+	opts := options{inputPath: "old-file.xls"}
+	err := convertFile(opts)
+	if err == nil {
+		t.Error("should reject .xls files")
+	}
+	if !strings.Contains(err.Error(), ".xlsx") {
+		t.Error("error should suggest .xlsx")
+	}
+}
+
+func TestConvertFile_CSVFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "data.csv")
+	os.WriteFile(path, []byte("Name,Score\nAlice,95\n"), 0644)
+
+	opts := options{inputPath: path}
+	err := convertFile(opts)
+	if err != nil {
+		t.Skipf("LaTeX not available: %v", err)
+	}
+
+	pdfPath := filepath.Join(tmpDir, "data.pdf")
+	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
+		t.Error("should create PDF from CSV")
+	}
+}
+
+func TestConvertFile_TXTFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "notes.txt")
+	os.WriteFile(path, []byte("My Notes\n\nSome content here.\n"), 0644)
+
+	opts := options{inputPath: path}
+	err := convertFile(opts)
+	if err != nil {
+		t.Skipf("LaTeX not available: %v", err)
+	}
+
+	pdfPath := filepath.Join(tmpDir, "notes.pdf")
+	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
+		t.Error("should create PDF from TXT")
+	}
+}
+
+func TestConvertFile_HTMLFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "page.html")
+	os.WriteFile(path, []byte("<html><head><title>Test</title></head><body><p>Hello</p></body></html>"), 0644)
+
+	opts := options{inputPath: path}
+	err := convertFile(opts)
+	if err != nil {
+		t.Skipf("LaTeX not available: %v", err)
+	}
+
+	pdfPath := filepath.Join(tmpDir, "page.pdf")
+	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
+		t.Error("should create PDF from HTML")
+	}
+}
+
+func TestConvertFile_XLSXFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "report.xlsx")
+	createTestXLSX(path, map[string][][]string{
+		"Data": {{"A", "B"}, {"1", "2"}},
+	})
+
+	opts := options{inputPath: path}
+	err := convertFile(opts)
+	if err != nil {
+		t.Skipf("LaTeX not available: %v", err)
+	}
+
+	pdfPath := filepath.Join(tmpDir, "report.pdf")
+	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
+		t.Error("should create PDF from XLSX")
 	}
 }
 

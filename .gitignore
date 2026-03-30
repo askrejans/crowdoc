@@ -1,6 +1,8 @@
 crowdoc
 *.pdf
 !examples/*.pdf
+*.xlsx
+!examples/*.xlsx
 *.tex
 *.aux
 *.log

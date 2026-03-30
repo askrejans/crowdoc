@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Building Multi-Tenant SaaS with Go and PostgreSQL</title>
+    <style>body { font-family: sans-serif; max-width: 800px; margin: auto; }</style>
+</head>
+<body>
+    <article>
+        <h1>Building Multi-Tenant SaaS with Go and PostgreSQL</h1>
+        <p><em>A practical guide to schema-per-tenant isolation in production systems</em></p>
+
+        <h2>Introduction</h2>
+        <p>Multi-tenancy is a <strong>fundamental requirement</strong> for any modern SaaS platform.
+        The challenge lies in choosing the right isolation strategy that balances
+        <strong>security</strong>, <strong>performance</strong>, and <strong>operational complexity</strong>.</p>
+
+        <p>In this article, we explore the schema-per-tenant approach using
+        <code>PostgreSQL</code> and <code>Go</code>, drawing from real production experience
+        with a B2B platform serving 200+ tenants.</p>
+
+        <h2>Isolation Strategies</h2>
+        <p>There are three common approaches to multi-tenant data isolation:</p>
+
+        <table>
+            <tr>
+                <th>Strategy</th>
+                <th>Isolation Level</th>
+                <th>Complexity</th>
+                <th>Cost</th>
+            </tr>
+            <tr>
+                <td>Shared tables</td>
+                <td>Low (row-level)</td>
+                <td>Low</td>
+                <td>Low</td>
+            </tr>
+            <tr>
+                <td>Schema-per-tenant</td>
+                <td>Medium (schema-level)</td>
+                <td>Medium</td>
+                <td>Medium</td>
+            </tr>
+            <tr>
+                <td>Database-per-tenant</td>
+                <td>High (full isolation)</td>
+                <td>High</td>
+                <td>High</td>
+            </tr>
+        </table>
+
+        <h2>Why Schema-Per-Tenant</h2>
+        <p>The schema-per-tenant approach offers the best balance for most SaaS applications:</p>
+
+        <ul>
+            <li>Strong isolation without the overhead of separate databases</li>
+            <li>Easy per-tenant migrations using <code>search_path</code></li>
+            <li>Shared connection pooling across all tenants</li>
+            <li>Simple backup and restore per tenant</li>
+            <li>Compatible with PostgreSQL's built-in tooling</li>
+        </ul>
+
+        <h2>Implementation in Go</h2>
+        <p>The key to schema-per-tenant in Go is middleware that sets the PostgreSQL
+        <code>search_path</code> on each request:</p>
+
+        <pre><code class="language-go">func TenantMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        tenantID := r.Header.Get("X-Tenant-ID")
+        if tenantID == "" {
+            http.Error(w, "missing tenant", 400)
+            return
+        }
+
+        schema := "tenant_" + tenantID
+        ctx := context.WithValue(r.Context(), "schema", schema)
+        next.ServeHTTP(w, r.WithContext(ctx))
+    })
+}</code></pre>
+
+        <h2>Migration Management</h2>
+        <p>Each tenant schema needs independent migrations. We use
+        <a href="https://github.com/pressly/goose">goose</a> with a custom driver:</p>
+
+        <ol>
+            <li>Detect all tenant schemas from the <code>tenants</code> table</li>
+            <li>For each schema, set <code>search_path</code> and run pending migrations</li>
+            <li>Track migration state per-schema in each tenant's <code>goose_db_version</code> table</li>
+            <li>Support rollback per-tenant without affecting others</li>
+        </ol>
+
+        <blockquote>
+            <p>Always test migrations against a snapshot of production data.
+            Schema-level migrations can still fail on tenant-specific data patterns
+            that don't exist in your dev environment.</p>
+        </blockquote>
+
+        <h2>Performance Considerations</h2>
+        <p>At 200+ tenants, we've observed these key performance patterns:</p>
+
+        <ul>
+            <li><strong>Connection pooling</strong> is critical &mdash; use <code>pgbouncer</code> with transaction-level pooling</li>
+            <li><strong>Schema count</strong> doesn't significantly impact query performance</li>
+            <li><strong>Index bloat</strong> is the real enemy &mdash; schedule regular <code>REINDEX</code> operations</li>
+            <li><strong>Monitoring</strong> per-tenant query times helps identify problem tenants early</li>
+        </ul>
+
+        <h2>Conclusion</h2>
+        <p>Schema-per-tenant isolation with PostgreSQL and Go provides a pragmatic
+        path to multi-tenancy that scales well into the hundreds of tenants. The
+        approach leverages PostgreSQL's native schema support, keeps operational
+        complexity manageable, and provides strong enough isolation for most B2B
+        SaaS use cases.</p>
+
+        <hr>
+        <p><em>Published March 2026. Based on real-world production experience
+        with a multi-tenant B2B platform.</em></p>
+    </article>
+</body>
+</html>
