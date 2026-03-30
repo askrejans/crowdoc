@@ -495,12 +495,20 @@ func inlineFormat(s string, doc Document, opts ...bool) string {
 		rawURL = strings.ReplaceAll(rawURL, `\%`, `%`)
 		rawURL = strings.ReplaceAll(rawURL, `\&`, `&`)
 		rawURL = strings.ReplaceAll(rawURL, `\textasciitilde{}`, `~`)
+		// Anchor-only links (#section) are internal document references — render as text only
+		if strings.HasPrefix(rawURL, "#") {
+			return text
+		}
 		// For \href: # must be escaped as \# (hyperref parameter token)
 		hrefURL := strings.ReplaceAll(rawURL, `#`, `\#`)
 		hrefURL = strings.ReplaceAll(hrefURL, `%`, `\%`)
 		// For relative .md links, just show as text (no clickable href)
 		if strings.HasSuffix(rawURL, ".md") || strings.Contains(rawURL, ".md#") {
 			return fmt.Sprintf(`\textbf{%s}`, text)
+		}
+		// URLs with # fragment: skip \footnote{\url{}} as # breaks inside footnote macro args
+		if strings.Contains(rawURL, "#") {
+			return fmt.Sprintf(`\href{%s}{%s}`, hrefURL, text)
 		}
 		return fmt.Sprintf(`\href{%s}{%s}\footnote{\url{%s}}`, hrefURL, text, rawURL)
 	})
