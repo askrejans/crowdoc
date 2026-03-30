@@ -236,6 +236,16 @@ func detectDocType(title string) string {
 	case strings.Contains(t, "plan") || strings.Contains(t, "budget") ||
 		strings.Contains(t, "roadmap") || strings.Contains(t, "checklist"):
 		return "internal"
+	case strings.Contains(t, "invoice") || strings.Contains(t, "rēķins") ||
+		strings.Contains(t, "bill") || strings.Contains(t, "receipt"):
+		return "invoice"
+	case strings.Contains(t, "memo") || strings.Contains(t, "memorandum") ||
+		strings.Contains(t, "notice") || strings.Contains(t, "announcement"):
+		return "memo"
+	case strings.Contains(t, "paper") || strings.Contains(t, "thesis") ||
+		strings.Contains(t, "dissertation") || strings.Contains(t, "journal") ||
+		strings.Contains(t, "research") || strings.Contains(t, "study"):
+		return "academic"
 	default:
 		return "document"
 	}
@@ -252,6 +262,12 @@ func styleFromDocType(docType string) string {
 		return "report"
 	case "letter":
 		return "letter"
+	case "academic":
+		return "academic"
+	case "invoice":
+		return "invoice"
+	case "memo":
+		return "memo"
 	default:
 		return "report"
 	}

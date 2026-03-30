@@ -6,7 +6,7 @@ Transform any Markdown file into a professionally typeset PDF. Whether you're wr
 
 ## Features
 
-- **5 built-in styles** -- legal, technical, report, minimal, letter
+- **8 built-in styles** -- legal, technical, report, minimal, letter, academic, invoice, memo
 - **Full Markdown support** -- headings, bold/italic, lists, tables, code blocks, images, blockquotes, footnotes, links
 - **Code blocks** with syntax highlighting via LaTeX `listings`
 - **Math support** -- inline `$E=mc^2$` and display `$$\sum_{i=1}^n$$`
@@ -36,23 +36,39 @@ go build -o crowdoc .
 
 ### Requirements
 
-A LaTeX distribution with LuaLaTeX (or XeLaTeX as fallback):
+A LaTeX distribution with LuaLaTeX (preferred) or XeLaTeX. crowdoc auto-detects whichever engine is available on your PATH.
 
+**macOS:**
 ```bash
-# macOS
 brew install --cask mactex-no-gui
+```
 
-# Ubuntu/Debian
+**Ubuntu / Debian:**
+```bash
 sudo apt install texlive-full
+```
 
-# Arch Linux
+**Fedora:**
+```bash
+sudo dnf install texlive-scheme-full
+```
+
+**Arch Linux:**
+```bash
 sudo pacman -S texlive-most
 ```
 
-**Recommended fonts** (optional, graceful fallbacks built in):
-- EB Garamond -- `brew install --cask font-eb-garamond`
-- Inter -- `brew install --cask font-inter`
-- JetBrains Mono -- `brew install --cask font-jetbrains-mono`
+**Windows:**
+
+Install [MiKTeX](https://miktex.org/download) or [TeX Live](https://tug.org/texlive/windows.html). Both provide `lualatex` and `xelatex`. MiKTeX auto-installs missing LaTeX packages on first use. For TeX Live, use the full installer.
+
+**Recommended fonts** (optional -- graceful fallbacks to Latin Modern built in):
+
+| Font | macOS | Ubuntu/Debian | Windows |
+|------|-------|---------------|---------|
+| EB Garamond | `brew install --cask font-eb-garamond` | `sudo apt install fonts-ebgaramond` | [Google Fonts](https://fonts.google.com/specimen/EB+Garamond) |
+| Inter | `brew install --cask font-inter` | `sudo apt install fonts-inter` | [Google Fonts](https://fonts.google.com/specimen/Inter) |
+| JetBrains Mono | `brew install --cask font-jetbrains-mono` | `sudo apt install fonts-jetbrains-mono` | [JetBrains](https://www.jetbrains.com/lp/mono/) |
 
 ## Usage
 
@@ -80,7 +96,7 @@ crowdoc --watch document.md            # regenerates on every save
 ### Options
 
 ```
-  -s, --style <name>     Style preset (legal, technical, report, minimal, letter)
+  -s, --style <name>     Style preset (legal, technical, report, minimal, letter, academic, invoice, memo)
   -b, --batch <dir>      Batch convert all .md files in directory
   -w, --watch            Watch file for changes and regenerate
       --toc              Force table of contents
@@ -114,6 +130,18 @@ No title page, no frills. Clean serif typography with subtle formatting. Perfect
 ### `letter`
 Formal business letter layout with sender/recipient blocks, date, and subject line. Includes signature area.
 ([source](examples/business-letter.md) | [pdf](examples/business-letter.pdf))
+
+### `academic`
+Double-spaced serif typography with abstract block, numbered sections, and running headers. Designed for research papers, theses, and journal articles. Auto-detected for documents with "paper", "thesis", "research", or "study" in the title.
+([source](examples/academic-paper.md) | [pdf](examples/academic-paper.pdf))
+
+### `invoice`
+Bold invoice header with number/date/status, clean sans-serif body optimized for tables and line items. Auto-detected for documents with "invoice", "bill", or "receipt" in the title.
+([source](examples/invoice-sample.md) | [pdf](examples/invoice-sample.pdf))
+
+### `memo`
+Structured TO/FROM/DATE/RE header block with rose accent color and sans-serif typography. Auto-detected for documents with "memo", "memorandum", or "notice" in the title.
+([source](examples/memo-internal.md) | [pdf](examples/memo-internal.pdf))
 
 ## Frontmatter Reference
 

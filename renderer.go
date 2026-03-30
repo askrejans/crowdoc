@@ -140,11 +140,11 @@ func compileLaTeX(texPath, tmpDir string) error {
 		if engine == engines[len(engines)-1] {
 			// Extract the most useful error line from LaTeX output
 			errMsg := extractLaTeXError(lastOutput)
-			return fmt.Errorf("LaTeX compilation failed with %s:\n%s\n\nFull log saved to temp directory. Install MacTeX: brew install --cask mactex-no-gui", engine, errMsg)
+			return fmt.Errorf("LaTeX compilation failed with %s:\n%s\n\nFull log saved to temp directory.\nInstall LaTeX: macOS: brew install --cask mactex-no-gui | Ubuntu: sudo apt install texlive-full | Windows: https://miktex.org", engine, errMsg)
 		}
 	}
 
-	return fmt.Errorf("no LaTeX engine found. Install MacTeX: brew install --cask mactex-no-gui")
+	return fmt.Errorf("no LaTeX engine found.\nInstall LaTeX: macOS: brew install --cask mactex-no-gui | Ubuntu: sudo apt install texlive-full | Windows: https://miktex.org")
 }
 
 // extractLaTeXError pulls out the most relevant error lines from LaTeX output.

@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const version = "1.2.0"
+const version = "1.2.1"
 
 // CLI flags parsed from os.Args
 type options struct {
@@ -255,6 +255,9 @@ func printStyleList() {
 	fmt.Println("  report     Professional cover page, business typography. For reports and proposals.")
 	fmt.Println("  minimal    Clean and simple, no frills. Great for general documents.")
 	fmt.Println("  letter     Formal business letter format with sender/recipient blocks.")
+	fmt.Println("  academic   Double-spaced serif, abstract block, numbered sections. For papers and theses.")
+	fmt.Println("  invoice    Bold header, clean tables, status badges. For invoices and billing.")
+	fmt.Println("  memo       TO/FROM/RE header block, sans-serif, rose accent. For internal memos.")
 	fmt.Println()
 	fmt.Println("Usage: crowdoc --style <name> input.md")
 	fmt.Println("Or set `style: <name>` in frontmatter.")
@@ -273,7 +276,7 @@ Usage:
   crowdoc --version                        Show version
 
 Options:
-  -s, --style <name>     Style: legal, technical, report, minimal, letter
+  -s, --style <name>     Style: legal, technical, report, minimal, letter, academic, invoice, memo
   -b, --batch <dir>      Batch convert all .md files in directory
   -w, --watch            Watch file for changes and regenerate
       --toc              Force table of contents
@@ -299,7 +302,11 @@ Example:
   ---
 
 Requirements:
-  LaTeX (LuaLaTeX): brew install --cask mactex-no-gui
+  LaTeX (LuaLaTeX or XeLaTeX):
+    macOS:   brew install --cask mactex-no-gui
+    Ubuntu:  sudo apt install texlive-full
+    Arch:    sudo pacman -S texlive-most
+    Windows: https://miktex.org or https://tug.org/texlive
 `, version)
 }
 

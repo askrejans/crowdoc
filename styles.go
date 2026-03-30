@@ -12,6 +12,12 @@ func getStyleTemplate(style string) string {
 		return minimalTemplate
 	case "letter":
 		return letterTemplate
+	case "academic":
+		return academicTemplate
+	case "invoice":
+		return invoiceTemplate
+	case "memo":
+		return memoTemplate
 	default:
 		return reportTemplate
 	}
@@ -920,6 +926,428 @@ const letterTemplate = `\documentclass[<< .FontSize >>pt, a4paper]{article}
 
 \noindent\rule{6cm}{0.4pt}\\[0.3em]
 \noindent << if .Author >><< escapeLaTeX .Author >><< end >>
+<< end >>
+
+\end{document}
+`
+
+// ============================================================================
+// ACADEMIC STYLE
+// ============================================================================
+
+const academicTemplate = `\documentclass[<< .FontSize >>pt, a4paper]{article}
+
+` + sharedFontSetup + sharedSerifFonts + sharedSansFonts + sharedMonoFonts + `
+
+%% === Page Geometry ===
+\usepackage[
+  top=<< or .MarginTop "2.5cm" >>, bottom=<< or .MarginBottom "2.5cm" >>,
+  left=<< or .MarginLeft "3cm" >>, right=<< or .MarginRight "3cm" >>,
+  headheight=14pt, headsep=1cm, footskip=1.2cm
+]{geometry}
+
+` + sharedPackages + `
+
+\setstretch{1.5}
+
+%% === Colors ===
+\usepackage{xcolor}
+\definecolor{headingcolor}{HTML}{1a1a1a}
+\definecolor{rulecolor}{HTML}{333333}
+\definecolor{accentcolor}{HTML}{444444}
+\definecolor{lightgray}{HTML}{f0f0f0}
+\definecolor{medgray}{HTML}{777777}
+\definecolor{statusgreen}{HTML}{27ae60}
+\definecolor{statusamber}{HTML}{d4a017}
+\definecolor{statusblue}{HTML}{2980b9}
+\definecolor{codebg}{HTML}{f5f5f5}
+\definecolor{codekey}{HTML}{0550ae}
+\definecolor{codestring}{HTML}{0a3069}
+\definecolor{codecomment}{HTML}{6a737d}
+\definecolor{quotecolor}{HTML}{555555}
+\definecolor{quotebg}{HTML}{f8f8f8}
+
+%% === Section Formatting ===
+\usepackage{titlesec}
+
+\titleformat{\section}
+  {\Large\bfseries\color{headingcolor}}
+  {\thesection}{0.6em}{}
+
+\titleformat{\subsection}
+  {\large\bfseries\color{headingcolor}}
+  {\thesubsection}{0.5em}{}
+
+\titleformat{\subsubsection}
+  {\normalsize\bfseries\itshape\color{headingcolor}}
+  {\thesubsubsection}{0.5em}{}
+
+\titlespacing*{\section}{0pt}{2em}{0.8em}
+\titlespacing*{\subsection}{0pt}{1.5em}{0.6em}
+\titlespacing*{\subsubsection}{0pt}{1em}{0.4em}
+
+%% === Header & Footer ===
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{rulecolor}\leaders\hrule height \headrulewidth\hfill}}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancyhead[L]{\small\itshape\color{medgray}<< or .HeaderLeft (escapeLaTeX .Title) >>}
+\fancyhead[R]{\small\color{medgray}<< or .HeaderRight (escapeLaTeX .Author) >>}
+\fancyfoot[C]{\small\color{medgray}\thepage}
+
+\renewcommand{\cftsecfont}{\bfseries}
+\renewcommand{\cftsubsecfont}{\small}
+\renewcommand{\cftsecpagefont}{\bfseries}
+\renewcommand{\cftsubsecpagefont}{\small}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=headingcolor,
+  urlcolor=accentcolor,
+  citecolor=accentcolor,
+  pdftitle={<< escapeLaTeX .Title >>},
+  pdfauthor={<< escapeLaTeX .Author >>},
+}
+
+\begin{document}
+
+<< if not .NoTitlePage >>
+%% ACADEMIC TITLE BLOCK
+\begin{center}
+\vspace*{2cm}
+
+{\fontsize{20}{26}\selectfont\bfseries << escapeLaTeX .Title >>\par}
+
+<< if hasContent .Subtitle >>
+\vspace{0.6cm}
+{\large\color{accentcolor}<< escapeLaTeX .Subtitle >>\par}
+<< end >>
+
+\vspace{1.2cm}
+
+<< if hasContent .Author >>
+{\large << escapeLaTeX .Author >>}\\[0.4em]
+<< end >>
+<< if hasContent .Date >>
+{\color{medgray}<< escapeLaTeX .Date >>}
+<< end >>
+
+\vspace{0.8cm}
+\noindent\textcolor{rulecolor}{\rule{0.4\textwidth}{0.5pt}}
+
+<< if hasContent .Summary >>
+\vspace{1cm}
+\begin{minipage}{0.85\textwidth}
+\begin{center}
+\textbf{Abstract}
+\end{center}
+\vspace{0.3cm}
+\small << escapeLaTeX .Summary >>
+\end{minipage}
+<< end >>
+
+\end{center}
+\vspace{1.5cm}
+<< end >>
+
+<< if .ShouldShowTOC >>
+\tableofcontents
+\newpage
+<< end >>
+
+<< if hasContent .RawPreamble >>
+<< mdToLaTeX .RawPreamble >>
+<< end >>
+
+<< range .Sections >>
+\<< sectionCmd .Level >>{<< escapeLaTeX .Title >>}
+<< mdToLaTeX .Content >>
+<< end >>
+
+\end{document}
+`
+
+// ============================================================================
+// INVOICE STYLE
+// ============================================================================
+
+const invoiceTemplate = `\documentclass[<< .FontSize >>pt, a4paper]{article}
+
+` + sharedFontSetup + `
+%% Invoice style: clean sans-serif
+\IfFontExistsTF{Inter}{
+  \setmainfont{Inter}[Scale=0.95, Ligatures=TeX]
+}{
+  \IfFontExistsTF{Helvetica Neue}{
+    \setmainfont{Helvetica Neue}[Ligatures=TeX]
+  }{
+    \setmainfont{Latin Modern Sans}[Ligatures=TeX]
+  }
+}
+` + sharedSansFonts + sharedMonoFonts + `
+
+%% === Page Geometry ===
+\usepackage[
+  top=<< or .MarginTop "2cm" >>, bottom=<< or .MarginBottom "2cm" >>,
+  left=<< or .MarginLeft "2.5cm" >>, right=<< or .MarginRight "2.5cm" >>,
+  headheight=14pt, headsep=1cm, footskip=1.2cm
+]{geometry}
+
+` + sharedPackages + `
+
+\setstretch{1.15}
+
+%% === Colors ===
+\usepackage{xcolor}
+\definecolor{headingcolor}{HTML}{1a1a2e}
+\definecolor{rulecolor}{HTML}{2563eb}
+\definecolor{accentcolor}{HTML}{374151}
+\definecolor{lightgray}{HTML}{f3f4f6}
+\definecolor{medgray}{HTML}{6b7280}
+\definecolor{statusgreen}{HTML}{059669}
+\definecolor{statusamber}{HTML}{d97706}
+\definecolor{statusblue}{HTML}{2563eb}
+\definecolor{codebg}{HTML}{f9fafb}
+\definecolor{codekey}{HTML}{7c3aed}
+\definecolor{codestring}{HTML}{059669}
+\definecolor{codecomment}{HTML}{9ca3af}
+\definecolor{quotecolor}{HTML}{2563eb}
+\definecolor{quotebg}{HTML}{eff6ff}
+
+%% === Section Formatting ===
+\usepackage{titlesec}
+
+\titleformat{\section}
+  {\large\bfseries\color{headingcolor}}
+  {}{0em}{}
+  [\vspace{-0.3em}\textcolor{rulecolor}{\rule{\textwidth}{0.4pt}}]
+
+\titleformat{\subsection}
+  {\normalsize\bfseries\color{headingcolor}}
+  {}{0em}{}
+
+\titlespacing*{\section}{0pt}{1.5em}{0.6em}
+\titlespacing*{\subsection}{0pt}{1em}{0.4em}
+
+%% === Header & Footer ===
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancyfoot[L]{\footnotesize\color{medgray}<< or .FooterLeft "" >>}
+\fancyfoot[C]{\footnotesize\color{medgray}Page \thepage\ of \pageref{LastPage}}
+\fancyfoot[R]{\footnotesize\color{medgray}<< or .FooterRight "" >>}
+
+\renewcommand{\cftsecfont}{\bfseries}
+\renewcommand{\cftsecpagefont}{\bfseries}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=headingcolor,
+  urlcolor=rulecolor,
+  pdftitle={<< escapeLaTeX .Title >>},
+  pdfauthor={<< escapeLaTeX .Author >>},
+}
+
+\begin{document}
+
+%% INVOICE HEADER
+\noindent
+\begin{minipage}[t]{0.55\textwidth}
+\vspace{0pt}
+<< if .Logo >>\includegraphics[height=1.5cm]{<< .Logo >>}\\[0.6cm]<< end >>
+{\large\bfseries\color{headingcolor}<< if .Author >><< escapeLaTeX .Author >><< end >>}
+<< if hasContent .Subtitle >>\\[0.3em]{\small\color{accentcolor}<< escapeLaTeX .Subtitle >>}<< end >>
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.4\textwidth}
+\vspace{0pt}
+\raggedleft
+{\fontsize{22}{28}\selectfont\bfseries\color{rulecolor}INVOICE}\\[0.6em]
+<< if hasContent .Version >>{\small\color{medgray}No.\enspace}\textbf{<< escapeLaTeX .Version >>}\\[0.3em]<< end >>
+<< if hasContent .Date >>{\small\color{medgray}Date:\enspace}\textbf{<< escapeLaTeX .Date >>}\\[0.3em]<< end >>
+<< if hasContent .Status >>{\small\color{medgray}Status:\enspace}\textbf{\textcolor{<< statusColor .Status >>}{<< escapeLaTeX .Status >>}}<< end >>
+\end{minipage}
+
+\vspace{0.8cm}
+\noindent\textcolor{rulecolor}{\rule{\textwidth}{1.5pt}}
+\vspace{0.8cm}
+
+<< if hasContent .Summary >>
+\noindent{\small\color{accentcolor}<< escapeLaTeX .Summary >>}
+\vspace{0.6cm}
+<< end >>
+
+<< if hasContent .RawPreamble >>
+<< mdToLaTeX .RawPreamble >>
+<< end >>
+
+<< range .Sections >>
+\<< sectionCmd .Level >>{<< escapeLaTeX .Title >>}
+<< mdToLaTeX .Content >>
+<< end >>
+
+<< if .HasSignatures >>
+\vspace{2cm}
+\noindent\textcolor{rulecolor}{\rule{\textwidth}{0.4pt}}
+\vspace{0.5cm}
+\noindent
+\begin{minipage}[t]{0.45\textwidth}
+{\small\color{medgray}Authorized by:}\\[1.5cm]
+\rule{6cm}{0.4pt}\\[0.3em]
+{\small Name / Signature}
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.45\textwidth}
+\raggedleft
+{\small\color{medgray}Date:}\\[1.5cm]
+\rule{6cm}{0.4pt}\\[0.3em]
+{\small Date}
+\end{minipage}
+<< end >>
+
+\end{document}
+`
+
+// ============================================================================
+// MEMO STYLE
+// ============================================================================
+
+const memoTemplate = `\documentclass[<< .FontSize >>pt, a4paper]{article}
+
+` + sharedFontSetup + `
+%% Memo style: clean sans-serif
+\IfFontExistsTF{Inter}{
+  \setmainfont{Inter}[Scale=0.95, Ligatures=TeX]
+}{
+  \IfFontExistsTF{Helvetica Neue}{
+    \setmainfont{Helvetica Neue}[Ligatures=TeX]
+  }{
+    \setmainfont{Latin Modern Sans}[Ligatures=TeX]
+  }
+}
+` + sharedSansFonts + sharedMonoFonts + `
+
+%% === Page Geometry ===
+\usepackage[
+  top=<< or .MarginTop "2.5cm" >>, bottom=<< or .MarginBottom "2.5cm" >>,
+  left=<< or .MarginLeft "2.5cm" >>, right=<< or .MarginRight "2.5cm" >>,
+  headheight=14pt, headsep=1cm, footskip=1cm
+]{geometry}
+
+` + sharedPackages + `
+
+\setstretch{1.25}
+
+%% === Colors ===
+\usepackage{xcolor}
+\definecolor{headingcolor}{HTML}{1e293b}
+\definecolor{rulecolor}{HTML}{e11d48}
+\definecolor{accentcolor}{HTML}{475569}
+\definecolor{lightgray}{HTML}{f1f5f9}
+\definecolor{medgray}{HTML}{94a3b8}
+\definecolor{statusgreen}{HTML}{16a34a}
+\definecolor{statusamber}{HTML}{ca8a04}
+\definecolor{statusblue}{HTML}{2563eb}
+\definecolor{codebg}{HTML}{f8fafc}
+\definecolor{codekey}{HTML}{7c3aed}
+\definecolor{codestring}{HTML}{059669}
+\definecolor{codecomment}{HTML}{94a3b8}
+\definecolor{quotecolor}{HTML}{e11d48}
+\definecolor{quotebg}{HTML}{fff1f2}
+
+%% === Section Formatting ===
+\usepackage{titlesec}
+
+\titleformat{\section}
+  {\large\bfseries\color{headingcolor}}
+  {\thesection}{0.6em}{}
+
+\titleformat{\subsection}
+  {\normalsize\bfseries\color{headingcolor}}
+  {\thesubsection}{0.5em}{}
+
+\titleformat{\subsubsection}
+  {\normalsize\bfseries\color{accentcolor}}
+  {\thesubsubsection}{0.5em}{}
+
+\titlespacing*{\section}{0pt}{1.5em}{0.5em}
+\titlespacing*{\subsection}{0pt}{1.2em}{0.4em}
+\titlespacing*{\subsubsection}{0pt}{0.8em}{0.3em}
+
+%% === Header & Footer ===
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancyhead[L]{\small\color{rulecolor}\textbf{MEMO}}
+\fancyhead[R]{\small\color{medgray}<< or .HeaderRight (escapeLaTeX .Date) >>}
+\fancyfoot[C]{\small\color{medgray}Page \thepage\ of \pageref{LastPage}}
+
+\renewcommand{\cftsecfont}{\bfseries}
+\renewcommand{\cftsubsecfont}{\small}
+\renewcommand{\cftsecpagefont}{\bfseries}
+\renewcommand{\cftsubsecpagefont}{\small}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=headingcolor,
+  urlcolor=rulecolor,
+  pdftitle={<< escapeLaTeX .Title >>},
+  pdfauthor={<< escapeLaTeX .Author >>},
+}
+
+\begin{document}
+
+%% MEMO HEADER BLOCK
+\noindent
+\begin{minipage}{\textwidth}
+<< if .Logo >>\includegraphics[height=1.2cm]{<< .Logo >>}\\[0.5cm]<< end >>
+\colorbox{rulecolor!10}{%
+\begin{minipage}{\dimexpr\textwidth-2\fboxsep}
+\vspace{0.5cm}
+\begin{tabular}{@{}l@{\hspace{0.8em}}l}
+\textcolor{rulecolor}{\textbf{TO:}} & << if hasContent .Subtitle >><< escapeLaTeX .Subtitle >><< else >>---<< end >> \\[0.4em]
+\textcolor{rulecolor}{\textbf{FROM:}} & << if hasContent .Author >><< escapeLaTeX .Author >><< else >>---<< end >> \\[0.4em]
+\textcolor{rulecolor}{\textbf{DATE:}} & << if hasContent .Date >><< escapeLaTeX .Date >><< else >><< escapeLaTeX .GeneratedDate >><< end >> \\[0.4em]
+\textcolor{rulecolor}{\textbf{RE:}} & \textbf{<< escapeLaTeX .Title >>} \\
+\end{tabular}
+\vspace{0.5cm}
+\end{minipage}%
+}
+\end{minipage}
+
+\vspace{0.3cm}
+\noindent\textcolor{rulecolor}{\rule{\textwidth}{1.5pt}}
+\vspace{0.6cm}
+
+<< if hasContent .Summary >>
+\noindent\textbf{Summary:} << escapeLaTeX .Summary >>
+\vspace{0.6cm}
+<< end >>
+
+<< if .ShouldShowTOC >>
+\tableofcontents
+\vspace{1cm}
+<< end >>
+
+<< if hasContent .RawPreamble >>
+<< mdToLaTeX .RawPreamble >>
+<< end >>
+
+<< range .Sections >>
+\<< sectionCmd .Level >>{<< escapeLaTeX .Title >>}
+<< mdToLaTeX .Content >>
 << end >>
 
 \end{document}

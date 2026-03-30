@@ -8,7 +8,7 @@ crowdoc/
   parser.go      Markdown parsing: frontmatter extraction, section splitting
   converter.go   Markdown-to-LaTeX conversion: inline formatting, lists, tables, code, images
   renderer.go    LaTeX template execution and PDF compilation (lualatex/xelatex)
-  styles.go      All LaTeX template strings for each style (legal, technical, report, minimal, letter)
+  styles.go      All LaTeX template strings for each style (legal, technical, report, minimal, letter, academic, invoice, memo)
   watcher.go     File watch mode (polling-based, no external deps)
   go.mod         Go module definition
   examples/      Sample markdown files demonstrating each style
@@ -61,11 +61,18 @@ Every style template must:
 - LuaLaTeX (preferred) or XeLaTeX
 - Packages used: fontspec, unicode-math, geometry, microtype, setspace, parskip, enumitem, amssymb, tabularx, booktabs, longtable, graphicx, adjustbox, listings, mdframed, amsmath, tocloft, hyperref, url, xcolor, titlesec, fancyhdr, lastpage
 
+## Cross-Platform Support
+
+crowdoc runs on macOS, Linux, and Windows. The binary auto-detects `lualatex`/`xelatex` via `exec.LookPath()` which searches PATH on all platforms. Font fallback chains (`\IfFontExistsTF`) ensure documents render with system defaults (Latin Modern) when premium fonts are unavailable.
+
+LaTeX distributions by platform:
+- **macOS**: MacTeX (`brew install --cask mactex-no-gui`)
+- **Linux**: TeX Live (`apt install texlive-full` / `dnf install texlive-scheme-full` / `pacman -S texlive-most`)
+- **Windows**: MiKTeX (https://miktex.org) or TeX Live (https://tug.org/texlive)
+
 ## Testing
 
 Convert the example files and verify PDF output:
 ```bash
-go build -o crowdoc . && ./crowdoc examples/technical-doc.md
-go build -o crowdoc . && ./crowdoc examples/legal-agreement.md
-go build -o crowdoc . && ./crowdoc examples/business-report.md
+go build -o crowdoc . && ./crowdoc --batch examples/
 ```
