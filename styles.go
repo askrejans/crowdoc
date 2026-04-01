@@ -4,6 +4,8 @@ package main
 // All templates use << >> as Go template delimiters to avoid collision with LaTeX braces.
 func getStyleTemplate(style string) string {
 	switch style {
+	case "ligums":
+		return ligumsTemplate
 	case "legal":
 		return legalTemplate
 	case "technical":
@@ -147,6 +149,160 @@ const sharedPackages = `%% === Typography ===
 %% === Links ===
 \usepackage{url}
 \usepackage{hyperref}
+`
+
+// ============================================================================
+// LIGUMS STYLE — Latvian agreements, monotone, no English, unnumbered sections
+// ============================================================================
+
+const ligumsTemplate = `\documentclass[<< .FontSize >>pt, a4paper]{article}
+
+` + sharedFontSetup + sharedSerifFonts + sharedSansFonts + sharedMonoFonts + `
+
+%% === Page Geometry ===
+\usepackage[
+  top=<< or .MarginTop "3cm" >>, bottom=<< or .MarginBottom "3cm" >>,
+  left=<< or .MarginLeft "3cm" >>, right=<< or .MarginRight "3cm" >>,
+  headheight=14pt, headsep=1.2cm, footskip=1.2cm
+]{geometry}
+
+` + sharedPackages + `
+
+\setstretch{1.25}
+
+%% === Colors (Monotone — serious business) ===
+\usepackage{xcolor}
+\definecolor{headingcolor}{HTML}{111111}
+\definecolor{rulecolor}{HTML}{333333}
+\definecolor{accentcolor}{HTML}{444444}
+\definecolor{lightgray}{HTML}{f5f5f5}
+\definecolor{medgray}{HTML}{666666}
+\definecolor{statusgreen}{HTML}{27ae60}
+\definecolor{statusamber}{HTML}{d4a017}
+\definecolor{statusblue}{HTML}{2980b9}
+\definecolor{codebg}{HTML}{f8f8f8}
+\definecolor{codekey}{HTML}{333333}
+\definecolor{codestring}{HTML}{444444}
+\definecolor{codecomment}{HTML}{888888}
+\definecolor{quotecolor}{HTML}{333333}
+\definecolor{quotebg}{HTML}{f5f5f5}
+
+%% === Section Formatting (unnumbered — document uses own numbering) ===
+\usepackage{titlesec}
+\setcounter{secnumdepth}{0}
+
+\titleformat{\section}
+  {\Large\bfseries\sffamily\color{headingcolor}}
+  {}{0em}{}
+  [\vspace{-0.3em}\textcolor{rulecolor}{\rule{\textwidth}{0.5pt}}]
+
+\titleformat{\subsection}
+  {\large\bfseries\sffamily\color{headingcolor}}
+  {}{0em}{}
+
+\titleformat{\subsubsection}
+  {\normalsize\bfseries\sffamily\color{headingcolor}}
+  {}{0em}{}
+
+\titlespacing*{\section}{0pt}{1.8em}{0.8em}
+\titlespacing*{\subsection}{0pt}{1.4em}{0.5em}
+\titlespacing*{\subsubsection}{0pt}{1em}{0.4em}
+
+%% === Header & Footer ===
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancyhead[L]{\small\sffamily\color{medgray}<< or .HeaderLeft (escapeLaTeX .Title) >>}
+\fancyhead[R]{\small\sffamily\color{medgray}<< or .HeaderRight "" >>}
+\fancyfoot[C]{%
+  \textcolor{rulecolor}{\rule{2cm}{0.3pt}}\\[3pt]
+  \small\sffamily\color{medgray}Lapa \thepage\ no \pageref{LastPage}
+}
+
+\renewcommand{\cftsecfont}{\sffamily}
+\renewcommand{\cftsubsecfont}{\sffamily\small}
+\renewcommand{\cftsecpagefont}{\sffamily}
+\renewcommand{\cftsubsecpagefont}{\sffamily\small}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=headingcolor,
+  urlcolor=accentcolor,
+  pdfauthor={<< escapeLaTeX .Author >>},
+  pdftitle={<< escapeLaTeX .Title >>},
+}
+
+\begin{document}
+
+<< if not .NoTitlePage >>
+%% TITLE PAGE — Clean, minimal, Latvian
+\begin{titlepage}
+\newgeometry{top=3cm, bottom=3cm, left=3.5cm, right=3.5cm}
+
+\vspace*{4cm}
+
+\begin{center}
+
+{\fontsize{28}{34}\selectfont\bfseries\sffamily\color{headingcolor}
+<< escapeLaTeX .Title >>}
+
+<< if hasContent .Subtitle >>
+\vspace{0.8cm}
+{\Large\sffamily\color{accentcolor}<< escapeLaTeX .Subtitle >>}
+<< end >>
+
+\vspace{1.5cm}
+{\textcolor{rulecolor}{\rule{5cm}{0.5pt}}}
+
+<< if hasContent .Summary >>
+\vspace{1.2cm}
+\begin{minipage}{0.8\textwidth}
+\centering
+{\normalsize\color{accentcolor}\itshape
+<< escapeLaTeX .Summary >>}
+\end{minipage}
+<< end >>
+
+<< if hasContent .Date >>
+\vspace{2cm}
+{\normalsize\sffamily\color{medgray}<< escapeLaTeX .Date >>}
+<< end >>
+
+\end{center}
+
+\vfill
+
+<< if hasContent .Author >>
+\noindent\textcolor{rulecolor}{\rule{\textwidth}{0.3pt}}
+\vspace{0.4cm}
+\begin{center}
+{\small\sffamily\color{medgray}<< escapeLaTeX .Author >>}
+\end{center}
+<< end >>
+
+\restoregeometry
+\end{titlepage}
+<< end >>
+
+<< if .ShouldShowTOC >>
+\tableofcontents
+\newpage
+<< end >>
+
+<< if hasContent .RawPreamble >>
+<< mdToLaTeX .RawPreamble >>
+<< end >>
+
+<< range .Sections >>
+\<< sectionCmd .Level >>{<< escapeLaTeX .Title >>}
+<< mdToLaTeX .Content >>
+<< end >>
+
+\end{document}
 `
 
 // ============================================================================

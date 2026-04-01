@@ -304,6 +304,7 @@ func runBatch(opts options) {
 
 func printStyleList() {
 	fmt.Printf("crowdoc v%s — available styles:\n\n", version)
+	fmt.Println("  ligums     Monotone, unnumbered sections, Latvian footer. For LV agreements and contracts.")
 	fmt.Println("  legal      Gold accents, signature blocks, formal headers. For contracts and agreements.")
 	fmt.Println("  technical  Wide margins, code-friendly, clean sans-serif. For technical documentation.")
 	fmt.Println("  report     Professional cover page, business typography. For reports and proposals.")
