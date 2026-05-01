@@ -36,8 +36,9 @@ func renderAndCompile(doc Document, outputPath string, customTemplatePath ...str
 		return fmt.Errorf("failed to write .tex file: %w", err)
 	}
 
-	// Compile with LuaLaTeX (two passes for TOC and references)
-	if err := compileLaTeX(texPath, tmpDir); err != nil {
+	// Compile with LuaLaTeX. A second pass is only needed when a table of
+	// contents is rendered, so simple export PDFs avoid unnecessary work.
+	if err := compileLaTeX(texPath, tmpDir, latexPasses(doc)); err != nil {
 		return err
 	}
 
@@ -102,9 +103,19 @@ func renderLaTeX(doc Document, customTemplatePath ...string) string {
 	return buf.String()
 }
 
+func latexPasses(doc Document) int {
+	if doc.ShouldShowTOC() {
+		return 2
+	}
+	return 1
+}
+
 // compileLaTeX runs LuaLaTeX on the .tex file, falling back to XeLaTeX.
-func compileLaTeX(texPath, tmpDir string) error {
+func compileLaTeX(texPath, tmpDir string, passes int) error {
 	engines := []string{"lualatex", "xelatex"}
+	if passes < 1 {
+		passes = 1
+	}
 
 	for _, engine := range engines {
 		if _, err := exec.LookPath(engine); err != nil {
@@ -114,8 +125,7 @@ func compileLaTeX(texPath, tmpDir string) error {
 		success := true
 		var lastOutput string
 
-		// Two passes for TOC and cross-references
-		for pass := 0; pass < 2; pass++ {
+		for pass := 0; pass < passes; pass++ {
 			cmd := exec.Command(engine,
 				"-interaction=nonstopmode",
 				"-halt-on-error",

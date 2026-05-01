@@ -429,6 +429,56 @@ func TestParseArgs_FontSize(t *testing.T) {
 	}
 }
 
+func TestParseArgs_MetadataOverrides(t *testing.T) {
+	withArgs([]string{
+		"--title", "April Invoices",
+		"--subtitle", "Customer ledger",
+		"--author", "SIA Ulbroka",
+		"--language", "lv",
+		"--date", "2026-05-01",
+		"--status", "final",
+		"--classification", "internal",
+		"--summary", "Monthly export",
+		"input.csv",
+	}, func() {
+		opts := parseArgs()
+		if opts.title != "April Invoices" ||
+			opts.subtitle != "Customer ledger" ||
+			opts.author != "SIA Ulbroka" ||
+			opts.language != "lv" ||
+			opts.date != "2026-05-01" ||
+			opts.status != "final" ||
+			opts.classification != "internal" ||
+			opts.summary != "Monthly export" {
+			t.Fatalf("metadata overrides were not parsed correctly: %+v", opts)
+		}
+	})
+}
+
+func TestApplyMetadataOverrides(t *testing.T) {
+	doc := Document{Title: "Original", Status: "DRAFT", Classification: "CONFIDENTIAL"}
+	applyMetadataOverrides(&doc, options{
+		title:          "Export",
+		subtitle:       "Ledger",
+		author:         "CrowFoundry",
+		language:       "lv",
+		date:           "2026-05-01",
+		status:         "final",
+		classification: "internal",
+		summary:        "Ready",
+	})
+	if doc.Title != "Export" ||
+		doc.Subtitle != "Ledger" ||
+		doc.Author != "CrowFoundry" ||
+		doc.Language != "lv" ||
+		doc.Date != "2026-05-01" ||
+		doc.Status != "FINAL" ||
+		doc.Classification != "INTERNAL" ||
+		doc.Summary != "Ready" {
+		t.Fatalf("metadata overrides were not applied: %+v", doc)
+	}
+}
+
 func TestParseArgs_Batch(t *testing.T) {
 	for _, flag := range []string{"--batch", "-b"} {
 		withArgs([]string{flag, "docs/"}, func() {

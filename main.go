@@ -26,6 +26,15 @@ type options struct {
 	noSignatures bool
 	fontSize     int
 	outputTeX    bool // --tex: also output the intermediate .tex file
+
+	title          string
+	subtitle       string
+	author         string
+	language       string
+	date           string
+	status         string
+	classification string
+	summary        string
 }
 
 func main() {
@@ -119,6 +128,54 @@ func parseArgs() options {
 				fatal("--template requires a path to a .tex template file")
 			}
 			opts.templatePath = args[i]
+		case arg == "--title":
+			i++
+			if i >= len(args) {
+				fatal("--title requires a value")
+			}
+			opts.title = args[i]
+		case arg == "--subtitle":
+			i++
+			if i >= len(args) {
+				fatal("--subtitle requires a value")
+			}
+			opts.subtitle = args[i]
+		case arg == "--author":
+			i++
+			if i >= len(args) {
+				fatal("--author requires a value")
+			}
+			opts.author = args[i]
+		case arg == "--language" || arg == "--lang":
+			i++
+			if i >= len(args) {
+				fatal("--language requires a value")
+			}
+			opts.language = args[i]
+		case arg == "--date":
+			i++
+			if i >= len(args) {
+				fatal("--date requires a value")
+			}
+			opts.date = args[i]
+		case arg == "--status":
+			i++
+			if i >= len(args) {
+				fatal("--status requires a value")
+			}
+			opts.status = args[i]
+		case arg == "--classification":
+			i++
+			if i >= len(args) {
+				fatal("--classification requires a value")
+			}
+			opts.classification = args[i]
+		case arg == "--summary":
+			i++
+			if i >= len(args) {
+				fatal("--summary requires a value")
+			}
+			opts.summary = args[i]
 		case arg == "--font-size":
 			i++
 			if i >= len(args) {
@@ -224,6 +281,7 @@ func convertFile(opts options) error {
 	if opts.fontSize > 0 {
 		doc.FontSize = opts.fontSize
 	}
+	applyMetadataOverrides(&doc, opts)
 
 	outputPath := opts.outputPath
 	if outputPath == "" {
@@ -248,6 +306,33 @@ func convertFile(opts options) error {
 
 	fmt.Printf("  %s\n", outputPath)
 	return nil
+}
+
+func applyMetadataOverrides(doc *Document, opts options) {
+	if opts.title != "" {
+		doc.Title = opts.title
+	}
+	if opts.subtitle != "" {
+		doc.Subtitle = opts.subtitle
+	}
+	if opts.author != "" {
+		doc.Author = opts.author
+	}
+	if opts.language != "" {
+		doc.Language = opts.language
+	}
+	if opts.date != "" {
+		doc.Date = opts.date
+	}
+	if opts.status != "" {
+		doc.Status = strings.ToUpper(opts.status)
+	}
+	if opts.classification != "" {
+		doc.Classification = strings.ToUpper(opts.classification)
+	}
+	if opts.summary != "" {
+		doc.Summary = opts.summary
+	}
 }
 
 func runBatch(opts options) {
@@ -336,6 +421,15 @@ Options:
   -s, --style <name>     Style: legal, technical, report, minimal, letter, academic, invoice, memo
   -b, --batch <dir>      Batch convert all .md files in directory
   -w, --watch            Watch file for changes and regenerate
+      --title <text>     Override document title (useful for CSV/XLSX/HTML exports)
+      --subtitle <text>  Override document subtitle
+      --author <text>    Override document author/company
+      --language <code>  Override language metadata (en, lv)
+      --date <date>      Override document date
+      --status <text>    Override document status
+      --classification <text>
+                          Override classification label
+      --summary <text>   Override cover-page summary
       --toc              Force table of contents
       --no-toc           Disable table of contents
       --no-title-page    Skip the title page

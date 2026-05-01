@@ -15,6 +15,7 @@ Transform Markdown, CSV, Excel, HTML, or plain text files into professionally ty
 - **Math support** -- inline `$E=mc^2$` and display `$$\sum_{i=1}^n$$`
 - **Auto-detected styling** -- crowdoc picks the right style based on your content
 - **Table of contents** -- auto-generated for documents with 3+ sections
+- **Faster simple exports** -- one LaTeX pass for documents without a table of contents; two passes only when page references need it
 - **Image embedding** -- `![caption](path.png)` rendered with captions
 - **Frontmatter control** -- fine-tune every aspect via YAML metadata
 - **Batch conversion** -- convert entire directories at once (all supported formats)
@@ -86,6 +87,7 @@ crowdoc article.html                   # HTML → PDF
 crowdoc notes.txt                      # Plain text → PDF
 crowdoc document.md output.pdf         # Custom output path
 crowdoc --style technical spec.md      # Force a style
+crowdoc --title "April Invoices" --author "SIA Ulbroka" invoices.csv
 ```
 
 ### Batch conversion
@@ -109,6 +111,15 @@ crowdoc --watch document.md            # Regenerates on every save
   -s, --style <name>     Style preset (legal, technical, report, minimal, letter, academic, invoice, memo)
   -b, --batch <dir>      Batch convert all supported files in directory
   -w, --watch            Watch file for changes and regenerate
+      --title <text>     Override document title (useful for CSV/XLSX/HTML exports)
+      --subtitle <text>  Override document subtitle
+      --author <text>    Override author/company
+      --language <code>  Override language metadata (en, lv)
+      --date <date>      Override document date
+      --status <text>    Override document status
+      --classification <text>
+                          Override classification label
+      --summary <text>   Override cover-page summary
       --toc              Force table of contents
       --no-toc           Disable table of contents
       --no-title-page    Skip the title page

@@ -95,6 +95,16 @@ func TestRenderLaTeX_WithTOC(t *testing.T) {
 	}
 }
 
+func TestLatexPasses(t *testing.T) {
+	if got := latexPasses(Document{Sections: []Section{{Title: "One"}, {Title: "Two"}}}); got != 1 {
+		t.Fatalf("documents without TOC should compile in one pass, got %d", got)
+	}
+	toc := true
+	if got := latexPasses(Document{TOC: &toc}); got != 2 {
+		t.Fatalf("documents with TOC should compile in two passes, got %d", got)
+	}
+}
+
 func TestRenderLaTeX_NoTitlePage(t *testing.T) {
 	doc := Document{
 		Title:          "Test",

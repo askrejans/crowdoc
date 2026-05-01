@@ -461,6 +461,22 @@ func TestParseFrontmatter_CaseInsensitiveKeys(t *testing.T) {
 	}
 }
 
+func TestParseFrontmatter_UnquotesValues(t *testing.T) {
+	doc := Document{}
+	parseFrontmatter(`title: "Quoted title"
+subtitle: 'Quoted subtitle'
+no-title-page: true`, &doc)
+	if doc.Title != "Quoted title" {
+		t.Fatalf("quoted title was not unquoted: %q", doc.Title)
+	}
+	if doc.Subtitle != "Quoted subtitle" {
+		t.Fatalf("quoted subtitle was not unquoted: %q", doc.Subtitle)
+	}
+	if !doc.NoTitlePage {
+		t.Fatal("no-title-page frontmatter should enable NoTitlePage")
+	}
+}
+
 // ─── ShouldShowTOC ──────────────────────────────────────────────────────────
 
 func TestShouldShowTOC_ForcedTrue(t *testing.T) {

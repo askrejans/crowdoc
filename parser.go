@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strconv"
 	"strings"
 	"time"
 )
@@ -21,10 +22,10 @@ type Document struct {
 	Classification string // CONFIDENTIAL, INTERNAL, PUBLIC
 
 	// Layout control
-	TOC          *bool // nil = auto, true = force on, false = force off
-	NoTitlePage  bool
+	TOC           *bool // nil = auto, true = force on, false = force off
+	NoTitlePage   bool
 	HasSignatures bool
-	FontSize     int    // 10, 11, or 12
+	FontSize      int // 10, 11, or 12
 
 	// Custom header/footer
 	HeaderLeft  string
@@ -281,7 +282,7 @@ func parseFrontmatter(fm string, doc *Document) {
 			continue
 		}
 		key := strings.TrimSpace(parts[0])
-		val := strings.TrimSpace(parts[1])
+		val := cleanFrontmatterValue(parts[1])
 		if val == "" {
 			continue
 		}
@@ -313,6 +314,8 @@ func parseFrontmatter(fm string, doc *Document) {
 		case "toc":
 			b := strings.ToLower(val) == "true" || val == "yes"
 			doc.TOC = &b
+		case "no-title-page", "notitlepage":
+			doc.NoTitlePage = strings.ToLower(val) == "true" || val == "yes"
 		case "logo":
 			doc.Logo = val
 		case "font-size", "fontsize":
@@ -342,4 +345,18 @@ func parseFrontmatter(fm string, doc *Document) {
 			doc.MarginRight = val
 		}
 	}
+}
+
+func cleanFrontmatterValue(raw string) string {
+	val := strings.TrimSpace(raw)
+	if len(val) >= 2 {
+		if unquoted, err := strconv.Unquote(val); err == nil {
+			return strings.TrimSpace(unquoted)
+		}
+		if (strings.HasPrefix(val, "'") && strings.HasSuffix(val, "'")) ||
+			(strings.HasPrefix(val, `"`) && strings.HasSuffix(val, `"`)) {
+			return strings.TrimSpace(val[1 : len(val)-1])
+		}
+	}
+	return val
 }
