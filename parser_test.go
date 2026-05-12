@@ -111,6 +111,44 @@ Content here.
 	}
 }
 
+func TestParseMarkdown_JurisdictionFrontmatter(t *testing.T) {
+	md := `---
+title: Invoice
+type: invoice
+style: invoice
+jurisdiction: lv-2026-official-v1
+seller_country_code: lv
+buyer-country-code: ee
+vat_breakdown: VAT 21%: EUR 21.00
+legal_notice: Latvian VAT Act Article 125 fields applied.
+---
+
+## Items
+
+Consulting services.
+`
+	doc := parseMarkdown(md, "/tmp")
+
+	if doc.Jurisdiction != "lv-2026-official-v1" {
+		t.Errorf("Jurisdiction = %q", doc.Jurisdiction)
+	}
+	if doc.SellerCountryCode != "LV" {
+		t.Errorf("SellerCountryCode = %q", doc.SellerCountryCode)
+	}
+	if doc.BuyerCountryCode != "EE" {
+		t.Errorf("BuyerCountryCode = %q", doc.BuyerCountryCode)
+	}
+	if doc.VATBreakdown != "VAT 21%: EUR 21.00" {
+		t.Errorf("VATBreakdown = %q", doc.VATBreakdown)
+	}
+	if doc.LegalNotice != "Latvian VAT Act Article 125 fields applied." {
+		t.Errorf("LegalNotice = %q", doc.LegalNotice)
+	}
+	if !doc.HasJurisdictionMetadata() {
+		t.Fatal("expected jurisdiction metadata to be detected")
+	}
+}
+
 func TestParseMarkdown_NoFrontmatter(t *testing.T) {
 	md := `# My Title
 

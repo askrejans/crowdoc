@@ -214,10 +214,16 @@ margin-top: 2.5cm
 margin-bottom: 2.5cm
 margin-left: 3cm
 margin-right: 3cm
+jurisdiction: lv-2026-official-v1
+seller_country_code: LV
+buyer_country_code: EE
+vat_breakdown: "VAT 21%: EUR 21.00"
+legal_notice: Latvian VAT invoice fields applied.
 ---
 ```
 
 All fields are optional. Sensible defaults are applied for everything.
+The jurisdiction fields are rendered by invoice and report styles for country-aware accounting exports.
 
 ## Markdown Features
 

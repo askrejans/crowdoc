@@ -831,6 +831,18 @@ const reportTemplate = `\documentclass[<< .FontSize >>pt, a4paper]{article}
 \newpage
 << end >>
 
+<< if .HasJurisdictionMetadata >>
+\section*{Jurisdiction Metadata}
+{\small
+<< if hasContent .Jurisdiction >>\textbf{Jurisdiction:} << escapeLaTeX .Jurisdiction >>\\[0.2em]<< end >>
+<< if hasContent .SellerCountryCode >>\textbf{Seller country:} << escapeLaTeX .SellerCountryCode >>\\[0.2em]<< end >>
+<< if hasContent .BuyerCountryCode >>\textbf{Buyer country:} << escapeLaTeX .BuyerCountryCode >>\\[0.2em]<< end >>
+<< if hasContent .VATBreakdown >>\textbf{VAT breakdown:} << escapeLaTeX .VATBreakdown >>\\[0.2em]<< end >>
+<< if hasContent .LegalNotice >>\textbf{Legal notice:} << escapeLaTeX .LegalNotice >><< end >>
+}
+\vspace{0.8cm}
+<< end >>
+
 << if hasContent .RawPreamble >>
 << mdToLaTeX .RawPreamble >>
 << end >>
@@ -1335,6 +1347,21 @@ const invoiceTemplate = `\documentclass[<< .FontSize >>pt, a4paper]{article}
 \vspace{0.8cm}
 \noindent\textcolor{rulecolor}{\rule{\textwidth}{1.5pt}}
 \vspace{0.8cm}
+
+<< if .HasJurisdictionMetadata >>
+\noindent
+\colorbox{lightgray}{%
+\begin{minipage}{\dimexpr\textwidth-2\fboxsep}
+{\small
+<< if hasContent .Jurisdiction >>\textbf{Jurisdiction:} << escapeLaTeX .Jurisdiction >>\\[0.25em]<< end >>
+<< if hasContent .SellerCountryCode >>\textbf{Seller country:} << escapeLaTeX .SellerCountryCode >>\\[0.25em]<< end >>
+<< if hasContent .BuyerCountryCode >>\textbf{Buyer country:} << escapeLaTeX .BuyerCountryCode >>\\[0.25em]<< end >>
+<< if hasContent .VATBreakdown >>\textbf{VAT breakdown:} << escapeLaTeX .VATBreakdown >>\\[0.25em]<< end >>
+<< if hasContent .LegalNotice >>\textbf{Legal notice:} << escapeLaTeX .LegalNotice >><< end >>
+}
+\end{minipage}}
+\vspace{0.7cm}
+<< end >>
 
 << if hasContent .Summary >>
 \noindent{\small\color{accentcolor}<< escapeLaTeX .Summary >>}

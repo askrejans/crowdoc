@@ -21,6 +21,13 @@ type Document struct {
 	Language       string // en, lv
 	Classification string // CONFIDENTIAL, INTERNAL, PUBLIC
 
+	// Accounting and jurisdiction metadata used by invoice/report templates.
+	Jurisdiction      string
+	SellerCountryCode string
+	BuyerCountryCode  string
+	VATBreakdown      string
+	LegalNotice       string
+
 	// Layout control
 	TOC           *bool // nil = auto, true = force on, false = force off
 	NoTitlePage   bool
@@ -213,6 +220,15 @@ func (d Document) ShouldShowTOC() bool {
 	return len(d.Sections) >= 3
 }
 
+// HasJurisdictionMetadata reports whether invoice/report legal metadata should render.
+func (d Document) HasJurisdictionMetadata() bool {
+	return strings.TrimSpace(d.Jurisdiction) != "" ||
+		strings.TrimSpace(d.SellerCountryCode) != "" ||
+		strings.TrimSpace(d.BuyerCountryCode) != "" ||
+		strings.TrimSpace(d.VATBreakdown) != "" ||
+		strings.TrimSpace(d.LegalNotice) != ""
+}
+
 // detectDocType infers document type from the title.
 func detectDocType(title string) string {
 	t := strings.ToLower(title)
@@ -281,12 +297,12 @@ func parseFrontmatter(fm string, doc *Document) {
 		if len(parts) != 2 {
 			continue
 		}
-		key := strings.TrimSpace(parts[0])
+		key := strings.ReplaceAll(strings.ToLower(strings.TrimSpace(parts[0])), "_", "-")
 		val := cleanFrontmatterValue(parts[1])
 		if val == "" {
 			continue
 		}
-		switch strings.ToLower(key) {
+		switch key {
 		case "title":
 			doc.Title = val
 		case "subtitle":
@@ -309,6 +325,16 @@ func parseFrontmatter(fm string, doc *Document) {
 			doc.Language = val
 		case "classification":
 			doc.Classification = strings.ToUpper(val)
+		case "jurisdiction":
+			doc.Jurisdiction = val
+		case "seller-country-code":
+			doc.SellerCountryCode = strings.ToUpper(val)
+		case "buyer-country-code":
+			doc.BuyerCountryCode = strings.ToUpper(val)
+		case "vat-breakdown":
+			doc.VATBreakdown = val
+		case "legal-notice":
+			doc.LegalNotice = val
 		case "signatures":
 			doc.HasSignatures = strings.ToLower(val) == "true" || val == "yes"
 		case "toc":

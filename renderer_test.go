@@ -95,6 +95,61 @@ func TestRenderLaTeX_WithTOC(t *testing.T) {
 	}
 }
 
+func TestRenderLaTeX_InvoiceJurisdictionMetadata(t *testing.T) {
+	doc := Document{
+		Title:             "Invoice",
+		Style:             "invoice",
+		FontSize:          11,
+		Version:           "INV-1",
+		Status:            "FINAL",
+		Date:              "2026-05-12",
+		Jurisdiction:      "LV",
+		SellerCountryCode: "LV",
+		BuyerCountryCode:  "LT",
+		VATBreakdown:      "VAT 21%: EUR 21.00",
+		LegalNotice:       "Latvian VAT invoice fields applied.",
+		Footnotes:         make(map[string]string),
+	}
+
+	latex := renderLaTeX(doc)
+	for _, want := range []string{
+		"Jurisdiction:",
+		"Seller country:",
+		"Buyer country:",
+		"VAT breakdown:",
+		"Latvian VAT invoice fields applied.",
+	} {
+		if !strings.Contains(latex, want) {
+			t.Errorf("invoice LaTeX missing %q", want)
+		}
+	}
+}
+
+func TestRenderLaTeX_ReportJurisdictionMetadata(t *testing.T) {
+	doc := Document{
+		Title:             "VAT Report",
+		Style:             "report",
+		FontSize:          11,
+		Version:           "1.0",
+		Status:            "FINAL",
+		Jurisdiction:      "EE",
+		SellerCountryCode: "EE",
+		VATBreakdown:      "VAT 24%: EUR 24.00",
+		Footnotes:         make(map[string]string),
+		Sections: []Section{
+			{Level: 2, Title: "Summary", Content: "Report body.\n"},
+		},
+	}
+
+	latex := renderLaTeX(doc)
+	if !strings.Contains(latex, "Jurisdiction Metadata") {
+		t.Fatal("report LaTeX should include jurisdiction metadata heading")
+	}
+	if !strings.Contains(latex, "VAT 24") {
+		t.Fatal("report LaTeX should include VAT breakdown")
+	}
+}
+
 func TestLatexPasses(t *testing.T) {
 	if got := latexPasses(Document{Sections: []Section{{Title: "One"}, {Title: "Two"}}}); got != 1 {
 		t.Fatalf("documents without TOC should compile in one pass, got %d", got)
