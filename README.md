@@ -4,6 +4,8 @@
 
 Transform Markdown, CSV, Excel, HTML, or plain text files into professionally typeset PDFs. Whether you're writing technical documentation, formatting spreadsheet data, converting web articles, or producing legal agreements, crowdoc produces stunning output with zero configuration.
 
+Current state: crowdoc is a public standalone converter. CrowFoundry tenant, jurisdiction, accounting, and compliance behavior belongs in CrowFoundry `api2`/`web` integrations, not in crowdoc's public templates.
+
 ## Features
 
 - **Multi-format input** -- Markdown, CSV, XLSX (Excel), HTML, and plain text
@@ -214,16 +216,10 @@ margin-top: 2.5cm
 margin-bottom: 2.5cm
 margin-left: 3cm
 margin-right: 3cm
-jurisdiction: lv-2026-official-v1
-seller_country_code: LV
-buyer_country_code: EE
-vat_breakdown: "VAT 21%: EUR 21.00"
-legal_notice: Latvian VAT invoice fields applied.
 ---
 ```
 
 All fields are optional. Sensible defaults are applied for everything.
-The jurisdiction fields are rendered by invoice and report styles for country-aware accounting exports.
 
 ## Markdown Features
 

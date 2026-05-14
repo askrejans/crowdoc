@@ -1,5 +1,7 @@
 # crowdoc -- Development Guide
 
+Current state: crowdoc is a public standalone converter. Keep CrowFoundry tenant, accounting, and jurisdiction-specific behavior in CrowFoundry `api2`/`web`, not in crowdoc public templates.
+
 ## Project Structure
 
 ```
