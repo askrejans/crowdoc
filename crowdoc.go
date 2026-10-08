@@ -98,8 +98,16 @@ type Options struct {
 	Now time.Time
 }
 
-// Engine compiles a rendered project to PDF.
+// Engine compiles a rendered project to PDF. Implement it to plug in an
+// embedded Typst (a Rust library, WebAssembly) or a remote compiler.
 type Engine = engine.Engine
+
+// EngineJob is a project handed to an [Engine]: its files, entry file, PDF
+// standards and extra font directories.
+type EngineJob = engine.Job
+
+// EngineResult is what an [Engine] returns: the PDF and its diagnostics.
+type EngineResult = engine.Result
 
 // Diagnostic is a typesetting engine message.
 type Diagnostic = engine.Diagnostic

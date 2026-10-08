@@ -157,10 +157,14 @@ WebAssembly build). Alternatively implement `crowdoc.Engine`:
 ```go
 type Engine interface {
 	Name() string
-	Compile(ctx context.Context, job *engine.Job) (*engine.Result, error)
+	Compile(ctx context.Context, job *crowdoc.EngineJob) (*crowdoc.EngineResult, error)
 	Fonts(ctx context.Context) (map[string]bool, error) // families the engine can use
 }
 ```
+
+`EngineJob` carries `Files`, `Main`, `PDFStandards` and `FontPaths`;
+`EngineResult` holds the `PDF`, `Diagnostics` and `Duration`. Return a
+`*crowdoc.CompileError` when the project does not compile.
 
 `Fonts` lets crowdoc choose fonts the host actually has, so the generated
 project never asks for a missing family.
