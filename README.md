@@ -1,292 +1,173 @@
 # crowdoc
 
-**Universal document-to-PDF converter with beautiful LaTeX typography.**
+**Beautifully typeset PDFs from any document.**
 
-Transform Markdown, CSV, Excel, HTML, or plain text files into professionally typeset PDFs. Whether you're writing technical documentation, formatting spreadsheet data, converting web articles, or producing legal agreements, crowdoc produces stunning output with zero configuration.
+crowdoc turns Markdown, Word, OpenDocument, RTF, HTML, EPUB, Jupyter
+notebooks, spreadsheets, plain text and text-based PDFs into documents that
+look professionally typeset: proper hyphenation in 40 languages, real
+small caps and old-style figures, numbered figures and tables, cross-references,
+footnotes, mathematics, and citations formatted to APA, Chicago, IEEE, Harvard,
+Vancouver or MLA.
 
-Current state: crowdoc is a public standalone converter. CrowFoundry tenant, jurisdiction, accounting, and compliance behavior belongs in CrowFoundry `api2`/`web` integrations, not in crowdoc's public templates.
+It is a single Go binary and a Go library. Typesetting is done by
+[Typst](https://typst.app) — a 15 MB engine instead of a multi-gigabyte TeX
+installation — so a typical document is ready in a fraction of a second.
 
-## Features
+```sh
+crowdoc report.docx                          # → report.pdf, style chosen from the content
+crowdoc --style thesis --colors oxford --fonts classic thesis.md
+crowdoc --batch notes/ pdf/                  # a whole folder, in parallel
+crowdoc --watch paper.md                     # rebuild on every save
+```
 
-- **Multi-format input** -- Markdown, CSV, XLSX (Excel), HTML, and plain text
-- **8 built-in styles** -- legal, technical, report, minimal, letter, academic, invoice, memo
-- **Full Markdown support** -- headings, bold/italic, lists, tables, code blocks, images, blockquotes, footnotes, links
-- **Spreadsheet support** -- CSV and XLSX files rendered as formatted tables with auto-detected delimiters
-- **HTML conversion** -- headings, tables, lists, code blocks, links, and inline formatting preserved
-- **Code blocks** with syntax highlighting via LaTeX `listings`
-- **Math support** -- inline `$E=mc^2$` and display `$$\sum_{i=1}^n$$`
-- **Auto-detected styling** -- crowdoc picks the right style based on your content
-- **Table of contents** -- auto-generated for documents with 3+ sections
-- **Faster simple exports** -- one LaTeX pass for documents without a table of contents; two passes only when page references need it
-- **Image embedding** -- `![caption](path.png)` rendered with captions
-- **Frontmatter control** -- fine-tune every aspect via YAML metadata
-- **Batch conversion** -- convert entire directories at once (all supported formats)
-- **Watch mode** -- regenerate on file save
-- **Cross-platform** -- macOS, Linux, Windows (auto-detects LaTeX engine)
-- **Zero Go dependencies** -- single binary, just needs LaTeX
+## Highlights
+
+- **29 styles** for academic, publishing, business, legal, technical,
+  correspondence and personal documents — from a two-column conference paper
+  and an APA manuscript to invoices, letters for window envelopes, minutes,
+  CVs and 16:9 slides.
+- **16 colour schemes** (Oxford, Bordeaux, Emerald, Graphite, Champagne,
+  Nordic, Midnight, a dark Night scheme for screens, …) plus per-role colour
+  overrides, applied to every style.
+- **23 typeface pairings** over 68 curated, openly licensed families (EB
+  Garamond, Source Serif, STIX Two, IBM Plex, Inter, Literata, Libertinus, Noto
+  for Arabic, Hebrew and CJK, …), downloaded on demand and verified by
+  checksum. Without them, crowdoc still works with the faces built into Typst.
+- **40 languages**: localised captions ("Figure 3", "3. attēls", "図3"), dates,
+  quotation marks, page labels and hyphenation — including languages the
+  engine does not hyphenate itself (Latvian, Romanian, Macedonian, Irish,
+  Basque, Montenegrin).
+- **Citations without biber**: BibTeX/BibLaTeX, CSL-JSON/YAML, RIS and PubMed
+  files; Zotero, Mendeley and Word citations inside .docx files; numbered
+  hand-written reference lists linked automatically.
+- **Faithful readers**: Word styles, multi-level lists, merged table cells,
+  images with captions, footnotes, equations (Word OMML and MathML become
+  typeset math), tracked changes, EPUB chapters, notebook outputs, Excel
+  dates and merged cells, and PDF layout reconstruction (columns, headings,
+  lists, tables, de-hyphenation).
+- **Images just work**: PNG, JPEG (with EXIF rotation), GIF, WebP, SVG, PDF,
+  BMP and TIFF; HEIC on macOS; data URIs; natural sizing that never blows up
+  small images.
+- **Archival and accessible output**: PDF/A-1b … A-4 and tagged PDF/UA-1.
+- **Safe for untrusted input**: uploads cannot read files outside their own
+  directory, fetch URLs or inject raw markup; archives are size-limited.
+- **A library first**: parse, inspect, render or convert from Go; hosts
+  without process support (mobile, WebAssembly) render the Typst project and
+  compile it with an embedded Typst.
 
 ## Installation
 
-### From source
-
-```bash
-go install github.com/askrejans/crowdoc@latest
+```sh
+go install github.com/askrejans/crowdoc/v2/cmd/crowdoc@latest
+crowdoc engine install        # downloads the pinned Typst release (≈15 MB, checksum-verified)
+crowdoc fonts install         # optional: the "core" font set (≈33 MB); also extended, cjk, emoji
 ```
 
-### Build locally
+crowdoc also uses `typst` from `$PATH` or `$CROWDOC_TYPST`. TeX Live's font
+collection is picked up automatically when it is installed.
 
-```bash
-git clone https://github.com/askrejans/crowdoc.git
-cd crowdoc
-go build -o crowdoc .
-```
-
-### Requirements
-
-A LaTeX distribution with LuaLaTeX (preferred) or XeLaTeX. crowdoc auto-detects whichever engine is available on your PATH.
-
-**macOS:**
-```bash
-brew install --cask mactex-no-gui
-```
-
-**Ubuntu / Debian:**
-```bash
-sudo apt install texlive-full
-```
-
-**Fedora:**
-```bash
-sudo dnf install texlive-scheme-full
-```
-
-**Arch Linux:**
-```bash
-sudo pacman -S texlive-most
-```
-
-**Windows:**
-
-Install [MiKTeX](https://miktex.org/download) or [TeX Live](https://tug.org/texlive/windows.html). Both provide `lualatex` and `xelatex`. MiKTeX auto-installs missing LaTeX packages on first use. For TeX Live, use the full installer.
-
-**Recommended fonts** (optional -- graceful fallbacks to Latin Modern built in):
-
-| Font | macOS | Ubuntu/Debian | Windows |
-|------|-------|---------------|---------|
-| EB Garamond | `brew install --cask font-eb-garamond` | `sudo apt install fonts-ebgaramond` | [Google Fonts](https://fonts.google.com/specimen/EB+Garamond) |
-| Inter | `brew install --cask font-inter` | `sudo apt install fonts-inter` | [Google Fonts](https://fonts.google.com/specimen/Inter) |
-| JetBrains Mono | `brew install --cask font-jetbrains-mono` | `sudo apt install fonts-jetbrains-mono` | [JetBrains](https://www.jetbrains.com/lp/mono/) |
+v1 (the LaTeX-based converter) remains available as
+`go install github.com/askrejans/crowdoc@v1.3.0`; its command-line flags keep
+working in v2.
 
 ## Usage
 
-### Single file
-
-```bash
-crowdoc document.md                    # Markdown → PDF
-crowdoc report.csv                     # CSV → PDF (formatted table)
-crowdoc data.xlsx                      # Excel → PDF (all sheets)
-crowdoc article.html                   # HTML → PDF
-crowdoc notes.txt                      # Plain text → PDF
-crowdoc document.md output.pdf         # Custom output path
-crowdoc --style technical spec.md      # Force a style
-crowdoc --title "April Invoices" --author "SIA Ulbroka" invoices.csv
+```
+crowdoc [options] <input> [output.pdf]
+crowdoc --batch <dir> [outdir]
+crowdoc --watch <input>
+crowdoc engine install|status
+crowdoc fonts install [core|extended|cjk|emoji|all]…|list
+crowdoc style export <name> [dir]
 ```
 
-### Batch conversion
-
-```bash
-crowdoc --batch docs/                  # Convert all supported files to docs/pdf/
-crowdoc --batch docs/ output/          # Custom output directory
-```
-
-Batch mode processes all supported formats: `.md`, `.csv`, `.xlsx`, `.txt`, `.html`.
-
-### Watch mode
-
-```bash
-crowdoc --watch document.md            # Regenerates on every save
-```
-
-### Options
-
-```
-  -s, --style <name>     Style preset (legal, technical, report, minimal, letter, academic, invoice, memo)
-  -b, --batch <dir>      Batch convert all supported files in directory
-  -w, --watch            Watch file for changes and regenerate
-      --title <text>     Override document title (useful for CSV/XLSX/HTML exports)
-      --subtitle <text>  Override document subtitle
-      --author <text>    Override author/company
-      --language <code>  Override language metadata (en, lv)
-      --date <date>      Override document date
-      --status <text>    Override document status
-      --classification <text>
-                          Override classification label
-      --summary <text>   Override cover-page summary
-      --toc              Force table of contents
-      --no-toc           Disable table of contents
-      --no-title-page    Skip the title page
-      --no-signatures    Skip signature blocks (legal style)
-      --font-size <n>    Base font size: 10, 11, or 12
-  -v, --version          Show version
-      --list-styles      Show available styles
-  -h, --help             Show help
-```
+| Option | |
+|---|---|
+| `-s, --style <name>` | Style (`--list-styles`) |
+| `--colors <scheme>`, `--color role=#hex` | Colour scheme and overrides (`--list-colors`) |
+| `--fonts <pairing>`, `--font`, `--sans-font`, `--mono-font`, `--math-font` | Typefaces (`--list-fonts`) |
+| `--lang <code>` | Document language (`--list-languages`); detected when omitted |
+| `--bib <file>`, `--csl <style>` | Bibliography and citation style (`--list-citation-styles`) |
+| `--paper`, `--landscape`, `--columns`, `--font-size`, `--line-spacing`, `--margin` | Page layout |
+| `--toc`, `--lof`, `--lot`, `--number-sections`, `--title-page`, `--signatures` (and `--no-…`) | Document parts |
+| `--title`, `--subtitle`, `--author "A; B"`, `--date`, `--organization`, `--status`, `--classification`, `--summary` | Metadata |
+| `-M, --meta key=value` | Any frontmatter key |
+| `--pdfa`, `--accessible`, `--pdf-standard <list>` | PDF/A-2b, PDF/UA-1, others |
+| `--typst`, `--source-dir <dir>` | Write the Typst project instead of a PDF |
+| `-t, --template <file.typ>` | Custom template (start from `crowdoc style export`) |
+| `-j, --jobs <n>` | Parallel conversions in batch mode |
+| `--fetch-images`, `--deterministic-fonts`, `--font-dir`, `--workdir`, `--timeout`, `--engine-path` | Resources and engine |
 
 ## Styles
 
-### `legal`
-Gold accents, formal typography, signature blocks. Designed for contracts, NDAs, and legal agreements. Auto-detected for documents with "agreement", "contract", or "NDA" in the title.
-([source](examples/legal-agreement.md) | [pdf](examples/legal-agreement.pdf))
+| Category | Styles |
+|---|---|
+| Academic | `article`, `paper` (two-column), `apa`, `essay` (MLA), `thesis`, `preprint`, `manuscript` (line-numbered), `notes` |
+| Publishing | `book`, `elegant`, `newsletter`, `slides` |
+| Business | `report`, `proposal`, `whitepaper`, `brief`, `invoice`, `minutes`, `policy`, `data` |
+| Technical | `technical`, `manual` |
+| Legal | `legal`, `ligums` (Latvian agreements) |
+| Correspondence | `letter` (DIN 5008 window on A4), `memo` |
+| General & personal | `minimal`, `modern`, `cv` |
 
-### `technical`
-Sans-serif body text, wider margins for code blocks, GitHub-inspired color palette. Ideal for API docs, specifications, and technical guides.
-([source](examples/technical-doc.md) | [pdf](examples/technical-doc.pdf))
+The style is chosen from frontmatter `style:`, the document type or title
+("Invoice …", "Līgums …", "Meeting minutes …") or the input format, and
+defaults to `report`. Every style honours colour schemes and typeface
+pairings.
 
-### `report`
-Professional cover page with dark header band, serif body, clean section formatting. Great for business reports, proposals, and analyses.
-([source](examples/business-report.md) | [pdf](examples/business-report.pdf))
+## Input formats
 
-### `minimal`
-No title page, no frills. Clean serif typography with subtle formatting. Perfect for notes, essays, and general writing.
-([source](examples/minimal-notes.md) | [pdf](examples/minimal-notes.pdf))
+| Format | Extensions | Notes |
+|---|---|---|
+| Markdown (CommonMark, GFM, Pandoc extensions) | `.md` `.markdown` `.mdown` `.mkd` `.mdx` `.qmd` `.rmd` | Frontmatter, citations, math, fenced divs, alerts |
+| Word | `.docx` `.docm` `.dotx` | Styles, lists, tables, images, footnotes, OMML equations, citations, tracked changes |
+| OpenDocument text | `.odt` `.fodt` `.ott` | Styles, lists, tables, images, notes, MathML formulas |
+| RTF | `.rtf` | Formatting, tables, embedded pictures |
+| HTML | `.html` `.htm` `.xhtml` | Article content, figures, tables, MathML |
+| EPUB | `.epub` | Chapters in spine order, images |
+| Jupyter notebook | `.ipynb` | Markdown cells, code, text and image outputs |
+| CSV / TSV | `.csv` `.tsv` `.tab` | Delimiter and header detection |
+| Excel | `.xlsx` `.xlsm` | Every sheet, number formats, dates, merged cells |
+| OpenDocument spreadsheet | `.ods` `.fods` | Every sheet, merged cells |
+| Plain text | `.txt` `.text` | Headings, lists and paragraphs recognised |
+| PDF with a text layer | `.pdf` | Layout reconstruction: columns, headings, lists, tables, footnotes, de-hyphenation; scanned PDFs need OCR first |
 
-### `letter`
-Formal business letter layout with sender/recipient blocks, date, and subject line. Includes signature area.
-([source](examples/business-letter.md) | [pdf](examples/business-letter.pdf))
+The format is detected from the content when the extension is missing or
+wrong.
 
-### `academic`
-Double-spaced serif typography with abstract block, numbered sections, and running headers. Designed for research papers, theses, and journal articles. Auto-detected for documents with "paper", "thesis", "research", or "study" in the title.
-([source](examples/academic-paper.md) | [pdf](examples/academic-paper.pdf))
+See [docs/authoring.md](docs/authoring.md) for the Markdown features:
+frontmatter, citations, cross-references, callouts, figures, tables and math.
 
-### `invoice`
-Bold invoice header with number/date/status, clean sans-serif body optimized for tables and line items. Auto-detected for documents with "invoice", "bill", or "receipt" in the title.
-([source](examples/invoice-sample.md) | [pdf](examples/invoice-sample.pdf))
+## Library
 
-### `memo`
-Structured TO/FROM/DATE/RE header block with rose accent color and sans-serif typography. Auto-detected for documents with "memo", "memorandum", or "notice" in the title.
-([source](examples/memo-internal.md) | [pdf](examples/memo-internal.pdf))
+```go
+import "github.com/askrejans/crowdoc/v2"
 
-## Input Formats
-
-### Markdown (`.md`, `.markdown`)
-Full Markdown support with YAML frontmatter, sections, code blocks, tables, math, images, and footnotes.
-
-### CSV (`.csv`)
-Auto-detects delimiter (comma, semicolon, tab). First row becomes table header. Title derived from filename. Default style: `report`.
-([source](examples/quarterly-sales.csv) | [pdf](examples/quarterly-sales.pdf))
-
-### Excel (`.xlsx`)
-Reads all sheets — each becomes a section with a formatted table. Supports shared strings, numbers, and booleans. Parsed using Go stdlib only (no external dependencies). Old `.xls` binary format is not supported.
-([source](examples/employee-data.xlsx) | [pdf](examples/employee-data.pdf))
-
-### HTML (`.html`, `.htm`)
-Converts headings, paragraphs, tables, lists, code blocks, blockquotes, links, images, and inline formatting (bold, italic, code, strikethrough). Strips `<script>`, `<style>`, `<nav>`, and `<footer>` blocks. Title extracted from `<title>` or first `<h1>`.
-([source](examples/article-webpage.html) | [pdf](examples/article-webpage.pdf))
-
-### Plain Text (`.txt`)
-First line becomes title. ALL CAPS lines promoted to section headings. Indented blocks (4 spaces or tab) become code blocks. Bullet and numbered lists preserved. Default style: `minimal`.
-([source](examples/plain-readme.txt) | [pdf](examples/plain-readme.pdf))
-
-## Frontmatter Reference
-
-Control document metadata and rendering with YAML frontmatter:
-
-```yaml
----
-title: My Document
-subtitle: A comprehensive guide
-date: 2026-03-23
-version: 2.0
-status: FINAL
-type: technical
-style: report
-summary: Brief description for the cover page.
-author: Jane Smith
-language: en
-classification: INTERNAL
-toc: true
-signatures: false
-logo: assets/logo.png
-font-size: 11
-header-left: Custom Header
-header-right: Confidential
-footer-left: Draft v2
-footer-right: Acme Corp
-margin-top: 2.5cm
-margin-bottom: 2.5cm
-margin-left: 3cm
-margin-right: 3cm
----
+res, err := crowdoc.ConvertFile(ctx, "thesis.docx", "thesis.pdf", crowdoc.Options{
+	Style: "thesis",
+	Meta:  map[string]any{"colors": "oxford", "fonts": "classic", "lang": "lv"},
+})
 ```
 
-All fields are optional. Sensible defaults are applied for everything.
+`Parse`, `Inspect` (outline and statistics), `Render` (Typst project without
+compiling), typesetting a document tree built in code (`Source.Document`),
+custom engines and the catalogue functions are described in
+[docs/library.md](docs/library.md). The `layout` package rebuilds documents
+from positioned text — a PDF text layer or OCR word boxes.
 
-## Markdown Features
+## Licence
 
-### Inline formatting
-- `**bold**` and `*italic*`
-- `` `inline code` ``
-- `[link text](url)` -- rendered with footnote URLs
-- `[^1]` footnotes with `[^1]: definition` at end of file
+GPL-3.0. Copyright 2026 Arvis Skrējāns. See [LICENSE](LICENSE).
 
-### Code blocks
-````markdown
-```python
-def hello():
-    print("Hello, world!")
-```
-````
+Dependencies are permissively licensed (MIT, BSD, Apache-2.0). Typst is
+Apache-2.0 and runs as a separate program. Fonts are SIL Open Font Licence
+1.1 and are downloaded separately; see
+[internal/support/fonts/README.md](internal/support/fonts/README.md). Hyphenation patterns
+are listed with their licences in
+[internal/support/hyph/PATTERNS.md](internal/support/hyph/PATTERNS.md).
 
-### Images
-```markdown
-![Architecture diagram](diagrams/arch.png)
-```
-Images are auto-sized to fit the text width with alt text as caption.
+## AI training opt-out
 
-### Math
-- Inline: `$E = mc^2$`
-- Display: `$$\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}$$`
-
-### Tables
-```markdown
-| Feature  | Status |
-|----------|--------|
-| Tables   | Done   |
-| Images   | Done   |
-```
-
-### Blockquotes
-```markdown
-> This will render with a styled left border
-> and light background.
-```
-
-## License
-
-GPL-3.0 License. Copyright 2026 Arvis Skrējāns.
-
-See [LICENSE](LICENSE) for details.
-
-## Contributing
-
-Contributions are welcome. Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Write clean, tested Go code
-4. Submit a pull request
-
-For bug reports and feature requests, open an issue on GitHub.
-
-## AI Training Opt-Out
-
-This repository and its contents are **not licensed for use in training AI/ML models**. This opt-out is declared via:
-
-- `robots.txt` — blocks known AI training crawlers (GPTBot, CCBot, Google-Extended, etc.)
-- `ai.txt` — Spawning.ai AI training opt-out declaration
-- `.ai-training-opt-out` — explicit opt-out marker file
-- **GPL-3.0 license** — derivative works (including trained models) must be released under the same license
-
----
-
-Built by [Arvis Skrējāns](https://github.com/askrejans).
+This repository and its contents are not licensed for use in training AI/ML
+models. The opt-out is declared via `robots.txt`, `ai.txt` and
+`.ai-training-opt-out`.

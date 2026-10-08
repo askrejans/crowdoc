@@ -1,0 +1,21 @@
+Romanian hyphenation patterns (rospell project), embedded unmodified as
+patterns/hyph_ro_RO.dic. The file's own header, reproduced verbatim:
+
+% Versiune:
+%  3.3.6
+%
+% Authors:
+%  Adrian Stoica (office@cuvinte.ro)
+%  Lucian Constantin (http://rospell.sourceforge.net)
+%
+% License:
+%  GNU General Public License Version 2 or later (see COPYING.GPL)
+%
+% Support:
+%  Please direct all your questions on http://groups.google.com/group/rospell mailing list.
+%
+
+Authors: Adrian Stoica, Lucian Constantin.
+Licence: GNU General Public License, version 2 or (at your option) any later
+version. This package is distributed under GPL-3.0; see the LICENSE file at
+the root of the repository for the licence text.

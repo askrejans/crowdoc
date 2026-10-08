@@ -1,0 +1,77 @@
+\documentclass[twocolumn,10pt,a4paper]{article}
+\usepackage{fontspec}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[margin=2cm]{geometry}
+\usepackage{hyperref}
+\title{Distributed Consensus in Heterogeneous Sensor Networks}
+\author{Anna Kalniņa \and Roberts Bērziņš \and Laura Smith}
+\date{12 May 2025}
+\begin{document}
+\maketitle
+\begin{abstract}
+We study consensus protocols for heterogeneous wireless sensor networks whose nodes differ in energy budget, radio range and computational capability. Our protocol reduces communication overhead by forty percent while preserving convergence guarantees under intermittent connectivity. Experiments on a deployment of two hundred nodes confirm the theoretical predictions.
+\end{abstract}
+
+\section{Introduction}
+Wireless sensor networks are increasingly deployed in environmental monitoring, precision agriculture and industrial automation. In such deployments the individual nodes are rarely identical: manufacturers, battery chemistries and firmware revisions vary, and the resulting heterogeneity complicates the design of distributed algorithms.\footnote{A survey of deployed networks is given by the working group on embedded sensing.} Classical consensus algorithms assume homogeneous participants and synchronous communication rounds, assumptions that are violated in practice.
+
+The contributions of this paper are threefold. First, we characterise the communication requirements of averaging consensus under heterogeneous energy constraints. Second, we propose an adaptive protocol that schedules transmissions according to the remaining energy of each node. Third, we evaluate the protocol on a real deployment and in large-scale simulations.\footnote{Simulation code and measurement data are available from the authors on request.}
+
+\section{Related work}
+Gossip-based averaging was introduced for peer-to-peer systems and later adapted to sensor networks. Subsequent work considered quantised communication, packet loss and asynchronous updates. Energy-aware variants typically reduce the transmission frequency of depleted nodes, but they do so with fixed thresholds that ignore the network topology.
+
+\subsection{Consensus under constraints}
+Constrained consensus problems arise whenever the participants must agree on a value while respecting local limitations. Typical constraints include:
+\begin{itemize}
+\item limited transmission power and therefore limited neighbourhoods;
+\item intermittent availability caused by duty cycling;
+\item heterogeneous clock drift between nodes.
+\end{itemize}
+Our approach addresses all three constraints simultaneously by combining adaptive scheduling with a drift-compensating update rule.
+
+\section{Method}
+Each node maintains an estimate of the network average and a counter of its remaining energy. At every round the node decides whether to transmit, based on the expected information gain of the transmission relative to its energy cost. The decision procedure proceeds in three steps:
+\begin{enumerate}
+\item estimate the disagreement with the neighbourhood;
+\item compare the expected gain with the energy threshold;
+\item transmit the estimate if the gain exceeds the threshold.
+\end{enumerate}
+The threshold is recomputed periodically from the distribution of energy levels observed in the neighbourhood, which makes the protocol self-calibrating and independent of manually tuned parameters.
+
+\begin{table}[t]
+\centering
+\caption{Network configurations used in the evaluation.}
+\begin{tabular}{lrrr}
+\toprule
+Configuration & Nodes & Range (m) & Energy (J) \\
+\midrule
+Small & 50 & 30 & 120 \\
+Medium & 120 & 45 & 150 \\
+Large & 200 & 60 & 180 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Evaluation}
+We deployed the protocol on two hundred nodes distributed over an agricultural field. Table~1 lists the configurations. Convergence was measured as the number of rounds needed until all estimates were within one percent of the true average. Across all configurations, the adaptive protocol converged within the theoretical bound while transmitting substantially fewer messages than the baseline.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{chart.png}
+\caption{Messages transmitted per round for increasing network sizes.}
+\end{figure}
+
+The reduction in communication was largest for the heterogeneous configurations, where depleted nodes could defer their transmissions to better-provisioned neighbours. In homogeneous configurations the protocol behaved like the baseline, which is the expected outcome given that every node faces the same trade-off between information gain and energy expenditure.
+
+\section{Discussion}
+The results indicate that energy heterogeneity, often treated as a nuisance, can be exploited to reduce the overall communication load. Nevertheless several limitations remain. The protocol assumes that energy levels can be estimated accurately, which may not hold for nodes with ageing batteries. Moreover, adversarial nodes could report misleading energy levels to avoid transmitting, a concern that we leave for future work.
+
+\section{Conclusion}
+We presented an adaptive consensus protocol for heterogeneous sensor networks that exploits differences in energy budgets to reduce communication overhead. Theoretical analysis and a field deployment demonstrate that the protocol preserves convergence guarantees while transmitting forty percent fewer messages than established approaches. Future work will address adversarial participants and mobility.
+
+\begin{thebibliography}{9}
+\bibitem{a} A. Author and B. Writer. Gossip algorithms for distributed averaging. \emph{Journal of Networking}, 12(3):45--67, 2019.
+\bibitem{b} C. Researcher. Energy-aware protocols for embedded sensing. In \emph{Proceedings of the Workshop on Sensing}, pages 1--10, 2021.
+\end{thebibliography}
+\end{document}

@@ -1,0 +1,59 @@
+package docx
+
+// Legacy documents insert characters from decorative "symbol" fonts whose
+// code points do not carry Unicode meaning. These tables map the common
+// ones to real Unicode characters.
+
+// symbolASCII is the Symbol font's layout of 0x20..0x7E.
+const symbolASCII = " !∀#∃%&∋()∗+,−./0123456789:;<=>?≅ΑΒΧΔΕΦΓΗΙϑΚΛΜΝΟΠΘΡΣΤΥςΩΞΨΖ[∴]⊥_‾αβχδεφγηιϕκλμνοπθρστυϖωξψζ{|}∼"
+
+var symbolASCIIRunes = []rune(symbolASCII)
+
+var symbolHigh = map[rune]string{
+	0xA0: "€", 0xA1: "ϒ", 0xA2: "′", 0xA3: "≤", 0xA4: "⁄", 0xA5: "∞", 0xA6: "ƒ", 0xA7: "♣",
+	0xA8: "♦", 0xA9: "♥", 0xAA: "♠", 0xAB: "↔", 0xAC: "←", 0xAD: "↑", 0xAE: "→", 0xAF: "↓",
+	0xB0: "°", 0xB1: "±", 0xB2: "″", 0xB3: "≥", 0xB4: "×", 0xB5: "∝", 0xB6: "∂", 0xB7: "•",
+	0xB8: "÷", 0xB9: "≠", 0xBA: "≡", 0xBB: "≈", 0xBC: "…", 0xBD: "|", 0xBE: "—", 0xBF: "↵",
+	0xC0: "ℵ", 0xC1: "ℑ", 0xC2: "ℜ", 0xC3: "℘", 0xC4: "⊗", 0xC5: "⊕", 0xC6: "∅", 0xC7: "∩",
+	0xC8: "∪", 0xC9: "⊃", 0xCA: "⊇", 0xCB: "⊄", 0xCC: "⊂", 0xCD: "⊆", 0xCE: "∈", 0xCF: "∉",
+	0xD0: "∠", 0xD1: "∇", 0xD2: "®", 0xD3: "©", 0xD4: "™", 0xD5: "∏", 0xD6: "√", 0xD7: "⋅",
+	0xD8: "¬", 0xD9: "∧", 0xDA: "∨", 0xDB: "⇔", 0xDC: "⇐", 0xDD: "⇑", 0xDE: "⇒", 0xDF: "⇓",
+	0xE0: "◊", 0xE1: "〈", 0xE2: "®", 0xE3: "©", 0xE4: "™", 0xE5: "∑", 0xF1: "〉", 0xF2: "∫",
+}
+
+var wingdings = map[rune]string{
+	0x4A: "☺", 0x4C: "☹", 0x6C: "●", 0x6D: "❍", 0x6E: "■", 0x6F: "□", 0x70: "◻", 0x71: "❑",
+	0x72: "❒", 0x73: "⬧", 0x74: "⧫", 0x75: "◆", 0x76: "❖", 0x77: "⬥", 0x9F: "•", 0xA1: "○",
+	0xA7: "▪", 0xA8: "◻", 0xD8: "➢", 0xE0: "→", 0xE8: "➔", 0xF0: "⇨", 0xFB: "✗", 0xFC: "✓",
+	0xFD: "☒", 0xFE: "☑",
+}
+
+var wingdings2 = map[rune]string{
+	0x4F: "✗", 0x50: "✓", 0x52: "☑", 0x53: "☒", 0x54: "☒", 0x97: "●", 0xA3: "☐",
+}
+
+var wingdings3 = map[rune]string{
+	0x7D: "▲", 0x7E: "▼", 0x75: "◄", 0x76: "►", 0xC6: "→", 0xC5: "←",
+}
+
+// symbolChar maps character code c (0x00-0xFF) of a symbol font table.
+func symbolChar(table string, c rune) (string, bool) {
+	switch table {
+	case "symbol":
+		if c >= 0x20 && c <= 0x7E {
+			return string(symbolASCIIRunes[c-0x20]), true
+		}
+		s, ok := symbolHigh[c]
+		return s, ok
+	case "wingdings":
+		s, ok := wingdings[c]
+		return s, ok
+	case "wingdings2":
+		s, ok := wingdings2[c]
+		return s, ok
+	case "wingdings3":
+		s, ok := wingdings3[c]
+		return s, ok
+	}
+	return "", false
+}

@@ -1,0 +1,22 @@
+QUARTERLY OPERATIONS SUMMARY
+
+1. Overview
+
+The operations team completed the migration of the warehouse inventory
+system during the third quarter. All stock records were reconciled and the
+legacy database was retired at the end of September.
+
+2. Key figures
+
+  - Orders processed: 18 240
+  - Average dispatch time: 1.8 days
+  - Returns rate: 2.1 %
+
+3. Next steps
+
+The team will focus on automating the replenishment process and on
+improving the accuracy of demand forecasts. Pilot results are expected
+in the first quarter of next year.
+
+Latviešu valodā: Ražošanas apjomi ir pieauguši, un šīs pārmaiņas ietekmē
+gan ražību, gan vides ilgtspēju. Ģimenes saimniecības – ķīmija, ļoti, ņemot.

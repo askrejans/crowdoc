@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("1 0 obj <</Pages 00 0 obj <</Type/XRef/Root 1 0 R/Encrypt<</Filter/Standard/V 5/CF<</<</CFM/AESV3  stream")

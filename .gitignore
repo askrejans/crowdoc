@@ -1,8 +1,11 @@
-crowdoc
+/crowdoc
+/dist/
 *.pdf
-!examples/*.pdf
+!examples/output/**/*.pdf
+!examples/pdf/*.pdf
+!internal/reader/pdf/testdata/*.pdf
 *.xlsx
-!examples/*.xlsx
+!examples/**/*.xlsx
 *.tex
 *.aux
 *.log
@@ -10,4 +13,4 @@ crowdoc
 *.toc
 .DS_Store
 GITHUB.md
-dist/
+/.claude/
