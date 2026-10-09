@@ -102,4 +102,4 @@ func logf(l *slog.Logger, msg string, args ...any) {
 }
 
 // Version is the library version (re-exported as crowdoc.Version).
-const Version = "2.0.1"
+const Version = "2.0.2"

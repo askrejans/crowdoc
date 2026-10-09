@@ -212,6 +212,19 @@ func TestPDFAAndLanguages(t *testing.T) {
 	}
 }
 
+func TestAccessiblePDFWithImagesAndMath(t *testing.T) {
+	eng := typstEngine(t)
+	for _, in := range []string{"examples/general/showcase.md", "examples/academic/academic-paper.md"} {
+		res, err := Convert(context.Background(), Source{Path: in}, Options{Engine: eng, PDFStandards: []string{"ua-1"}})
+		if err != nil {
+			t.Fatalf("%s: %v", in, err)
+		}
+		if !bytes.Contains(res.PDF, []byte("pdfuaid")) {
+			t.Fatalf("%s: no PDF/UA identification", in)
+		}
+	}
+}
+
 func TestRenderDocumentTree(t *testing.T) {
 	doc := &ast.Document{Blocks: []ast.Block{
 		&ast.Heading{Level: 1, Inlines: ast.Str("Built in code")},

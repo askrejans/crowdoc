@@ -233,7 +233,7 @@ func (w *writer) mathBlock(m *ast.MathBlock) string {
 	if label == "" {
 		label = res.Label
 	}
-	eq := "$ " + res.Typst + " $"
+	eq := "#math.equation(block: true, alt: " + str(mathAlt(m.TeX)) + ", $ " + res.Typst + " $)"
 	if label == "" {
 		return eq
 	}
@@ -350,7 +350,11 @@ func (w *writer) figure(f *ast.Figure) string {
 	if f.Image == nil {
 		return ""
 	}
-	img := w.imageExpr(f.Image, true)
+	im := *f.Image
+	if strings.TrimSpace(im.Alt) == "" && f.Caption != nil {
+		im.Alt = strings.TrimSpace(ast.PlainText(f.Caption))
+	}
+	img := w.imageExpr(&im, true)
 	if f.Caption == nil && f.Attr.ID == "" {
 		return "#align(center, " + img + ")"
 	}
@@ -367,7 +371,13 @@ func (w *writer) imageExpr(img *ast.Image, block bool) string {
 	if w.hooks.Image != nil {
 		a = w.hooks.Image(img)
 	}
-	alt := img.Alt
+	alt := strings.TrimSpace(img.Alt)
+	if alt == "" {
+		alt = strings.TrimSpace(img.Title)
+	}
+	if alt == "" && a.Path != "" {
+		alt = imageAltFromName(img.Src)
+	}
 	if a.Path == "" {
 		if a.Missing != "" {
 			w.warn("image %q: %s", img.Src, a.Missing)
@@ -548,7 +558,7 @@ func (w *writer) inlines(ins []ast.Inline, lineStart bool) string {
 			write("#raw("+str(n.Text)+")", true)
 		case *ast.Math:
 			res := w.math(n.TeX)
-			write("$"+strings.TrimSpace(res.Typst)+"$", false)
+			write("#math.equation(alt: "+str(mathAlt(n.TeX))+", $"+strings.TrimSpace(res.Typst)+"$)", true)
 		case *ast.Link:
 			write(w.link(n), true)
 		case *ast.Image:
@@ -670,4 +680,34 @@ func (w *writer) link(l *ast.Link) string {
 		out += "#footnote[#link(" + str(u) + ")]"
 	}
 	return out
+}
+
+// mathAlt is the accessible description of an equation: its LaTeX source,
+// which screen readers and PDF/UA validators accept as alt text.
+func mathAlt(tex string) string {
+	t := strings.Join(strings.Fields(tex), " ")
+	if t == "" {
+		return "equation"
+	}
+	return t
+}
+
+// imageAltFromName turns "figures/soil-map_2024.png" into "soil map 2024",
+// the last-resort alt text for an image nobody described.
+func imageAltFromName(src string) string {
+	name := src
+	if i := strings.LastIndexAny(name, "/\\"); i >= 0 {
+		name = name[i+1:]
+	}
+	if i := strings.IndexAny(name, "?#"); i >= 0 {
+		name = name[:i]
+	}
+	if i := strings.LastIndex(name, "."); i > 0 {
+		name = name[:i]
+	}
+	name = strings.Join(strings.FieldsFunc(name, func(r rune) bool { return r == '-' || r == '_' || r == '.' || r == ' ' }), " ")
+	if name == "" || strings.HasPrefix(src, "data:") {
+		return "image"
+	}
+	return name
 }
