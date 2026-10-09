@@ -26,9 +26,10 @@ crowdoc --watch paper.md                     # rebuild on every save
   correspondence and personal documents — from a two-column conference paper
   and an APA manuscript to invoices, letters for window envelopes, minutes,
   CVs and 16:9 slides.
-- **16 colour schemes** (Oxford, Bordeaux, Emerald, Graphite, Champagne,
-  Nordic, Midnight, a dark Night scheme for screens, …) plus per-role colour
-  overrides, applied to every style.
+- **34 colour schemes** (Oxford, Bordeaux, Emerald, Ink, Ocean, Forest, Cobalt,
+  tinted-paper Newsprint, Ivory and Kraft, High contrast, dark Night and Dusk
+  schemes for screens, …) plus per-role colour overrides, applied to every
+  style.
 - **23 typeface pairings** over 68 curated, openly licensed families (EB
   Garamond, Source Serif, STIX Two, IBM Plex, Inter, Literata, Libertinus, Noto
   for Arabic, Hebrew and CJK, …), downloaded on demand and verified by
