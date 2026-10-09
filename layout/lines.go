@@ -216,6 +216,12 @@ func spaceBefore(a, b *word) bool {
 	if a.sup || a.sub || b.sup || b.sub {
 		return gap > 0.2*max(a.size, b.size)
 	}
+	// OCR engines report whole words with tight boxes: two of them are two
+	// words even when the gap is narrow. Single characters may still be
+	// glyph-level boxes, so they keep the geometric rule.
+	if a.ocr && b.ocr && utf8.RuneCountInString(a.text) > 1 && utf8.RuneCountInString(b.text) > 1 {
+		return gap > -0.3*sz
+	}
 	return gap > 0.12*sz
 }
 

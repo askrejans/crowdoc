@@ -21,6 +21,7 @@ type word struct {
 	block              int
 	role               Role
 	em                 float64 // OCR: the font size estimated from the box, 0 if unknown
+	ocr                bool    // from a run without font metrics (OCR): runs are whole words
 }
 
 func (w *word) w() float64  { return w.x1 - w.x0 }
@@ -94,7 +95,7 @@ func makeWords(p Page) []*word {
 				size = r.H
 			}
 		}
-		base := word{size: size, em: em, bold: r.Bold, italic: r.Italic, mono: r.Mono, y0: r.Y, y1: r.Y + r.H, block: r.Block, role: r.Role}
+		base := word{size: size, em: em, ocr: r.FontSize <= 0, bold: r.Bold, italic: r.Italic, mono: r.Mono, y0: r.Y, y1: r.Y + r.H, block: r.Block, role: r.Role}
 		fields := strings.Fields(text)
 		if len(fields) == 1 && !strings.ContainsRune(text, ' ') {
 			w := base

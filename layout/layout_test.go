@@ -116,6 +116,22 @@ const (
 	loremC = "The sensors were calibrated against gravimetric samples after every heavy rain so that drift stayed small."
 )
 
+// Apple Vision and similar engines report tight word boxes: gaps of about a
+// tenth of the text height. Each run is still a word of its own.
+func TestOCRTightWordGapsKeepSpaces(t *testing.T) {
+	var runs []Run
+	x, y, h := 56.0, 70.0, 18.5
+	for _, w := range strings.Fields("Measurements were taken every hour with capacitive sensors") {
+		ww := float64(len([]rune(w))) * 0.45 * h
+		runs = append(runs, Run{Text: w, X: x, Y: y, W: ww, H: h})
+		x += ww + 0.08*h
+	}
+	doc, _ := Document(context.Background(), []Page{{Width: 595, Height: 842, Runs: runs}}, Options{})
+	if got := ast.Dump(doc.Blocks); !strings.Contains(got, "Measurements were taken every hour with capacitive sensors") {
+		t.Fatalf("words run together:\n%s", got)
+	}
+}
+
 func TestOCRTwoColumns(t *testing.T) {
 	p := newOCRPage()
 	p.line(72, 80, 22, "Field Observations")

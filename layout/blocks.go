@@ -410,8 +410,12 @@ func (d *doc) paraBreak(p *proto, n *line, f *flow) bool {
 		return true
 	}
 	if pb, nb := prev.block(), n.block(); pb != 0 && nb != 0 {
-		// The producer grouped the lines: trust it.
-		return pb != nb
+		// The producer grouped the lines: trust it. OCR engines often
+		// report each line of a skewed or curved page as a paragraph of its
+		// own, so for OCR a split is only a hint and the geometry decides.
+		if pb == nb || !prev.ocr {
+			return pb != nb
+		}
 	}
 	pitch := n.base - prev.base
 	exp := d.pitchFor(prev.size)
@@ -560,7 +564,7 @@ func (d *doc) collectCaption(items []flowItem, i int, f *flow) ([]*line, int) {
 	for j < len(items) && len(lines) < 8 {
 		n := items[j].l
 		prev := lines[len(lines)-1]
-		if n == nil || d.isHeadingLine(n) || d.paraBreak(tmp, n, f) || short(prev, f) && prev.block() == 0 || styleFlip(prev, n) {
+		if n == nil || d.isHeadingLine(n) || d.paraBreak(tmp, n, f) || short(prev, f) && (prev.block() == 0 || prev.ocr && prev.block() != n.block()) || styleFlip(prev, n) {
 			break
 		}
 		if r := n.role(); r != RoleAuto && r != RoleCaption && prev.role() == RoleCaption {
@@ -669,7 +673,7 @@ func (d *doc) assemble() []ast.Block {
 // paragraph p (last in the previous column).
 func (d *doc) continues(p, q *proto) bool {
 	last, first := p.lines[len(p.lines)-1], q.lines[0]
-	if lb, fb := last.block(), first.block(); lb != 0 && fb != 0 {
+	if lb, fb := last.block(), first.block(); lb != 0 && fb != 0 && (lb == fb || !last.ocr) {
 		return lb == fb
 	}
 	if p.quote != q.quote || math.Abs(last.size-first.size) > 0.12*max(last.size, first.size) {
