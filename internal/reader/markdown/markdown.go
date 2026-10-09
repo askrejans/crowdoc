@@ -104,6 +104,7 @@ func convertSource(ctx context.Context, src string, res *ast.Resources) ([]ast.B
 	root := md.Parser().Parse(gtext.NewReader(source))
 	c := newConverter(ctx, source, res)
 	blocks := c.document(root)
+	stripEscapeMarks(blocks)
 	return blocks, c.warns.List()
 }
 

@@ -317,6 +317,8 @@ func (c *conv) isLayoutTable(t *html.Node, rows []rowNode) bool {
 	switch strings.ToLower(attr(t, "role")) {
 	case "presentation", "none":
 		return true
+	case "table", "grid":
+		return false // explicitly a data table
 	}
 	for _, cl := range classes(t) {
 		switch cl {
