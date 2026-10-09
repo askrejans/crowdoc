@@ -117,6 +117,17 @@ func (r *Resolver) Resolve(src string) Asset {
 	return a
 }
 
+// Load returns the raw content of an image source (a "res:" name, a data:
+// URI, a local path or, when allowed, a remote URL) under the resolver's
+// access rules, without converting it. name is a file name for it.
+func (r *Resolver) Load(src string) (name string, data []byte, err error) {
+	src = strings.TrimSpace(src)
+	if src == "" {
+		return "", nil, errors.New("empty image source")
+	}
+	return r.load(src)
+}
+
 func (r *Resolver) resolve(src string) Asset {
 	if src == "" {
 		return Asset{Missing: "empty image source"}

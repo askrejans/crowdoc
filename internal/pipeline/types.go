@@ -67,6 +67,9 @@ func (p *prepared) Doc() *ast.Document { return p.doc }
 // Warnings returns the problems found while reading.
 func (p *prepared) Warnings() []string { return p.warnings }
 
+// BaseDir returns the directory relative resources are resolved against.
+func (p *prepared) BaseDir() string { return p.baseDir }
+
 // Format returns the detected input format.
 func (p *prepared) Format() Format { return p.format }
 

@@ -29,6 +29,8 @@ crowdoc --watch paper.md                     # rebuild on every save
 - **16 colour schemes** (Oxford, Bordeaux, Emerald, Graphite, Champagne,
   Nordic, Midnight, a dark Night scheme for screens, …) plus per-role colour
   overrides, applied to every style.
+- **Markdown out, too**: `--markdown` (or `-o file.md`) writes any input as clean,
+  round-trippable Markdown with its images, and `\newpage` in Markdown is a page break.
 - **23 typeface pairings** over 68 curated, openly licensed families (EB
   Garamond, Source Serif, STIX Two, IBM Plex, Inter, Literata, Libertinus, Noto
   for Arabic, Hebrew and CJK, …), downloaded on demand and verified by

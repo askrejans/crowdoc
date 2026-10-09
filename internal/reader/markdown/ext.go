@@ -531,7 +531,9 @@ func (divParser) Open(parent gast.Node, reader text.Reader, pc parser.Context) (
 		node.Title = strings.TrimSpace(spec[end+1:])
 	} else {
 		word, title, _ := strings.Cut(spec, " ")
-		node.Attr.Classes = []string{strings.ToLower(strings.Trim(word, "{}."))}
+		if cl := strings.ToLower(strings.Trim(word, "{}.")); cl != "" {
+			node.Attr.Classes = []string{cl}
+		}
 		node.Title = strings.TrimSpace(title)
 	}
 	if t := node.Attr.Get("title"); t != "" && node.Title == "" {
@@ -595,9 +597,14 @@ func parseAttrString(s string) ast.Attr {
 		case strings.HasPrefix(tok, "#"):
 			a.ID = dropMarks(tok[1:])
 		case strings.HasPrefix(tok, "."):
-			a.Classes = append(a.Classes, dropMarks(tok[1:]))
+			if cl := dropMarks(tok[1:]); cl != "" {
+				a.Classes = append(a.Classes, cl)
+			}
 		case strings.Contains(tok, "="):
 			k, v, _ := strings.Cut(tok, "=")
+			if k == "" {
+				continue
+			}
 			if a.KV == nil {
 				a.KV = map[string]string{}
 			}

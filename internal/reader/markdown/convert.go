@@ -299,8 +299,8 @@ func (c *converter) table(n *east.Table) ast.Block {
 		}
 		if _, ok := r.(*east.TableHeader); ok {
 			// A header row of empty cells means "no header" (pipe
-			// tables always need one).
-			if !emptyCells(row) {
+			// tables always need one) when body rows follow.
+			if !emptyCells(row) || r.NextSibling() == nil {
 				t.Head = append(t.Head, row)
 			}
 		} else {
