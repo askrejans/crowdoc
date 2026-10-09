@@ -320,6 +320,14 @@
   }
   let col = th.callout.at(kind, default: th.accent)
   let label = if title != none { title } else { cd-term(tm, kind, upper(kind.first()) + kind.slice(1)) }
+  // A style may draw callouts itself: theme key callout-show is a function
+  // (kind, title, colour, body) => content, returning auto for the default
+  // look (title is none unless the document gave one).
+  let custom = th.at("callout-show", default: none)
+  if custom != none {
+    let drawn = custom(kind, title, col, body)
+    if drawn != auto { return drawn }
+  }
   let style = th.callout-style
   block(
     width: 100%,
@@ -669,3 +677,291 @@
   columns: (1fr, auto, 1fr),
   align(start, first), middle, align(end, last),
 )
+
+// ---------------------------------------------------------------------------
+// --- article and leaflet styles ---
+// ---------------------------------------------------------------------------
+
+// Whether a printable title exists (untitled documents have none).
+#let cd-has-title(meta) = meta.title != none and meta.title != [] and meta.title != ""
+
+// Display face for headlines: the pairing's heading face when it has one,
+// otherwise the main (text) face rather than the sans fallback.
+#let cd-display-font(meta) = if meta.fonts.heading == meta.fonts.sans { meta.fonts.main } else { meta.fonts.heading }
+
+// Colour for type set on an accent fill: the page colour (white on paper,
+// dark on night schemes).
+#let cd-on-accent(meta) = meta.colors.at("page", default: white)
+
+// Paper size (width, height) of the common Typst paper names, with the
+// page turned for landscape. Unknown names fall back to A4.
+#let cd-paper-dims(paper, flipped: false) = {
+  let mm = (
+    "a3": (297, 420), "a4": (210, 297), "a5": (148, 210), "a6": (105, 148),
+    "iso-b5": (176, 250), "iso-b4": (250, 353), "us-letter": (215.9, 279.4),
+    "us-legal": (215.9, 355.6), "us-executive": (184.15, 266.7), "us-statement": (139.7, 215.9),
+  ).at(paper, default: (210, 297))
+  let (w, h) = (mm.at(0) * 1mm, mm.at(1) * 1mm)
+  if flipped { (h, w) } else { (w, h) }
+}
+
+#let cd-rtl-langs = ("ar", "he", "fa", "ur", "yi", "ps", "sd", "ckb", "dv", "ug")
+// Scripts without letter case or with vertical/ideographic traditions get
+// no drop cap.
+#let cd-dropcap-langs-excluded = cd-rtl-langs + ("zh", "ja", "ko", "th", "lo", "km", "my", "bo")
+
+#let cd-seq = [].func()
+#let cd-space = [ ].func()
+
+// Inline content that may belong to a paragraph.
+#let cd-is-inline(c) = {
+  let f = c.func()
+  if f == raw or f == math.equation { return not c.at("block", default: false) }
+  f in (text, cd-space, smartquote, strong, emph, link, footnote, box, highlight, underline,
+    overline, strike, smallcaps, sub, super, linebreak, h, ref, cite, metadata, pdf.artifact)
+}
+
+// The top-level children of content, with nested sequences flattened.
+#let cd-children(body) = if body == none { () } else if body.func() == cd-seq {
+  body.children.map(c => if c.func() == cd-seq { cd-children(c) } else { (c,) }).flatten()
+} else { (body,) }
+
+// Splits the opening paragraph off a body: (lead, rest). lead is the array
+// of inline children of the first paragraph, or none when the body opens
+// with something else (a heading, list, table, figure …).
+#let cd-split-lead(body) = {
+  let kids = cd-children(body)
+  let i = 0
+  while i < kids.len() and kids.at(i).func() in (cd-space, parbreak) { i += 1 }
+  let start = i
+  while i < kids.len() and cd-is-inline(kids.at(i)) { i += 1 }
+  if i == start { return (none, body) }
+  (kids.slice(start, i), kids.slice(i).join())
+}
+
+// The initial of a paragraph for a drop cap: leading quotation marks and
+// punctuation with the first letter (or a number of at most two digits).
+// Returns (initial, rest, opening smart quotes) or none when the paragraph
+// does not start with plain text.
+#let cd-take-initial(kids) = {
+  let prefix = ()
+  let k = 0
+  let alnum = regex("^[\p{L}\p{N}]")
+  while k < kids.len() {
+    let c = kids.at(k)
+    let f = c.func()
+    if f == smartquote {
+      prefix.push(c)
+    } else if f == text {
+      let cl = c.text.clusters()
+      let j = 0
+      while j < cl.len() and cl.at(j).match(alnum) == none {
+        if cl.at(j).trim() == "" { return none }
+        j += 1
+      }
+      if j == cl.len() {
+        if cl.len() > 3 { return none }
+        prefix.push(c)
+      } else {
+        let n = 1
+        if cl.at(j).match(regex("^\p{N}")) != none {
+          while j + n < cl.len() and cl.at(j + n).match(regex("^\p{N}")) != none { n += 1 }
+          if n > 2 { return none }
+        }
+        let tail = cl.slice(j + n).join(default: "")
+        let rest = if tail != "" { (text(tail),) } else { () }
+        return ((..prefix, text(cl.slice(0, j + n).join())).join(), rest + kids.slice(k + 1), prefix.filter(p => p.func() == smartquote))
+      }
+    } else if f in (strong, emph) {
+      let inner = cd-take-initial(cd-children(c.body))
+      if inner == none { return none }
+      let (ini, rest, quotes) = inner
+      let wrapped = if rest.len() > 0 { (f(rest.join()),) } else { () }
+      return ((..prefix, f(ini)).join(), wrapped + kids.slice(k + 1), prefix.filter(p => p.func() == smartquote) + quotes)
+    } else {
+      return none
+    }
+    k += 1
+  }
+  none
+}
+
+// Number of double smart quotes in content.
+#let cd-count-dquotes(c) = {
+  let f = c.func()
+  if f == smartquote { if c.at("double", default: true) { 1 } else { 0 } }
+  else if f == cd-seq { c.children.map(cd-count-dquotes).sum(default: 0) }
+  else if c.has("body") and type(c.body) == content { cd-count-dquotes(c.body) }
+  else { 0 }
+}
+
+// Inline children as words (break opportunities at spaces only).
+#let cd-words(kids) = {
+  let words = ()
+  let cur = ()
+  for c in kids {
+    let f = c.func()
+    if f == cd-space {
+      if cur.len() > 0 { words.push(cur.join()); cur = () }
+    } else if f == text and c.text.contains(" ") {
+      for (i, part) in c.text.split(" ").enumerate() {
+        if i > 0 and cur.len() > 0 { words.push(cur.join()); cur = () }
+        if part != "" { cur.push(text(part)) }
+      }
+    } else {
+      cur.push(c)
+    }
+  }
+  if cur.len() > 0 { words.push(cur.join()) }
+  words
+}
+
+// A paragraph opening with a drop cap `lines` lines deep. The text beside
+// the initial is fitted by measuring; a paragraph too short to wrap the
+// initial, or one that does not start with a letter, is set normally.
+#let cd-dropcap(kids, lines: 3, font: auto, fill: auto, weight: "regular", gap: 0.35em) = layout(size => {
+  let plain = par(first-line-indent: 0pt, kids.join())
+  let r = cd-take-initial(kids)
+  if r == none { return plain }
+  let (initial, rest-kids, quotes) = r
+  let words = cd-words(rest-kids)
+  // The text beside the initial keeps the opening quotation marks, invisibly,
+  // so its closing marks still close.
+  let carry = quotes.map(q => text(size: 0pt, q)).join()
+  if words.len() < 4 { return plain }
+  let probe(n) = measure(block(width: size.width, par(first-line-indent: 0pt, justify: false, range(n).map(_ => [X]).join(linebreak())))).height
+  let h1 = probe(1)
+  let hn = probe(lines)
+  let cap-args = (top-edge: "cap-height", bottom-edge: "baseline", weight: weight, hyphenate: false)
+  if font != auto { cap-args.insert("font", font) }
+  if fill != auto { cap-args.insert("fill", fill) }
+  let ratio = measure(text(..cap-args, size: 100pt, "H")).height / 100pt
+  let cap = text(..cap-args, size: hn / ratio, initial)
+  let cw = measure(cap).width
+  let gap = gap.to-absolute()
+  let avail = size.width - cw - gap
+  if avail < size.width * 0.5 { return plain }
+  // An initial with a descender (Q, J) wraps one more line.
+  let deep = measure(text(..cap-args, bottom-edge: "bounds", size: hn / ratio, initial)).height > hn + 0.12 * h1 * lines
+  let hside = if deep { probe(lines + 1) } else { hn }
+  let side(n) = par(first-line-indent: 0pt, [#carry#words.slice(0, n).join([ ])#if n < words.len() { linebreak(justify: true) }])
+  let fits(n) = measure(block(width: avail, side(n))).height <= hside + 0.1pt
+  // Shorter than the initial: no drop cap.
+  if measure(block(width: avail, par(first-line-indent: 0pt, words.join([ ])))).height <= probe(lines - 1) + 0.1pt { return plain }
+  let (lo, hi) = (0, words.len())
+  if fits(hi) { lo = hi }
+  while hi - lo > 1 {
+    let mid = calc.quo(lo + hi, 2)
+    if fits(mid) { lo = mid } else { hi = mid }
+  }
+  if lo == 0 { return plain }
+  block(above: 0pt, below: par.leading, breakable: false, pad(left: cw + gap, par(first-line-indent: 0pt,
+    box(width: 0pt, height: h1, place(top + left, dx: -(cw + gap), cap)) + side(lo).body)))
+  if lo < words.len() {
+    let open = quotes.filter(q => q.at("double", default: true)).len() + cd-count-dquotes(words.slice(0, lo).join([ ]))
+    par(first-line-indent: 0pt, [#if calc.odd(open) { text(size: 0pt, smartquote()) }#words.slice(lo).join([ ])])
+  }
+})
+
+// Sets the opening paragraph of body with a drop cap (when the body opens
+// with a paragraph and the language has letter case). With a first-line
+// indent, the paragraph after the opening one keeps its indent.
+#let cd-with-dropcap(meta, body, indent: 0pt, ..args) = {
+  if meta.lang in cd-dropcap-langs-excluded { return body }
+  let (lead, rest) = cd-split-lead(body)
+  if lead == none { return body }
+  cd-dropcap(lead, ..args)
+  let (next, after) = cd-split-lead(rest)
+  if indent != 0pt and next != none and cd-children(rest).at(0, default: none) == parbreak() {
+    par(first-line-indent: (amount: indent, all: true), next.join())
+    after
+  } else {
+    rest
+  }
+}
+
+// Restyles the opening paragraph of body (a lede): fn receives the
+// paragraph content.
+#let cd-with-lede(body, fn) = {
+  let (lead, rest) = cd-split-lead(body)
+  if lead == none { return body }
+  fn(lead.join())
+  parbreak()
+  rest
+}
+
+// Appends an end mark (a small square, a dingbat) to the last paragraph of
+// body when the text ends with one.
+#let cd-with-end-mark(body, mark) = {
+  let kids = cd-children(body)
+  let n = kids.len()
+  while n > 0 and kids.at(n - 1).func() in (cd-space, parbreak) { n -= 1 }
+  if n == 0 or not cd-is-inline(kids.at(n - 1)) or kids.at(n - 1).func() == linebreak { return body }
+  // A word joiner keeps the mark on the line of the last word.
+  (..kids.slice(0, n), text("\u{2060}"), pdf.artifact(box(pad(left: 0.4em, mark))), ..kids.slice(n)).join()
+}
+
+// An ornament of three small lozenges (font independent).
+#let cd-lozenges(fill, size: 3.2pt, gap: 0.55em) = pdf.artifact(box(baseline: -0.1em, stack(dir: ltr, spacing: gap,
+  ..range(3).map(_ => rotate(45deg, reflow: true, square(size: size, fill: fill))))))
+
+// Columns that balance when the text is short: a body that fits on the
+// current page is split into columns of equal height instead of filling
+// the first column and leaving the others empty. `before` is set above the
+// columns at full width (an opening); `used` is space already taken on the
+// page above this element; `rule` draws column rules.
+#let cd-columns(n, body, gutter: 1em, before: none, used: 0pt, rule: none) = layout(size => {
+  let gutter = gutter.to-absolute()
+  let used = used
+  if before != none {
+    before
+    used += measure(block(width: size.width, before)).height
+  }
+  if n <= 1 { return body }
+  let colw = (size.width - gutter * (n - 1)) / n
+  let total = measure(block(width: colw, body)).height
+  let pitch = measure(block(width: colw, [X \ X])).height - measure(block(width: colw, [X])).height
+  // Blocks that cannot break (quotes, boxes, figures) may leave a column
+  // short by up to their height; allow for the tallest so nothing overflows.
+  let breakable = ("space", "parbreak", "heading", "list", "enum", "terms", "par", "layout", "columns")
+  let tallest = cd-children(body).filter(c => not cd-is-inline(c) and repr(c.func()) not in breakable)
+    .map(c => measure(block(width: colw, c)).height).fold(0pt, calc.max)
+  let height = total / n + pitch * 1.5 + tallest
+  let rules(h) = if rule != none {
+    for k in range(1, n) {
+      place(top + left, dx: k * (colw + gutter) - gutter / 2, pdf.artifact(line(angle: 90deg, length: h, stroke: rule)))
+    }
+  }
+  if height < (size.height - used) * 0.9 {
+    block(height: height, breakable: false, width: 100%, { rules(height); columns(n, gutter: gutter, body) })
+  } else if rule != none {
+    // Flowing over pages: cd-column-rules draws the rules from the page
+    // background using these markers.
+    [#metadata((n: n, gutter: gutter, colw: colw))<cd-cols-start>]
+    columns(n, gutter: gutter, [#body#metadata(none)<cd-cols-end>])
+  } else {
+    columns(n, gutter: gutter, body)
+  }
+})
+
+// Column rules for cd-columns text that flows over pages; use as the page
+// background. margin: the page margins (top and bottom are read).
+#let cd-column-rules(rule, margin) = context {
+  let starts = query(<cd-cols-start>)
+  let ends = query(<cd-cols-end>)
+  if starts.len() == 0 or ends.len() == 0 { return }
+  let (s, e) = (starts.first(), ends.first())
+  let p = here().page()
+  let (sp, ep) = (s.location().page(), e.location().page())
+  if p < sp or p > ep { return }
+  let info = s.value
+  let abs(v) = if type(v) == length { v.to-absolute() } else if type(v) == relative { v.length.to-absolute() + v.ratio * page.height } else { v * page.height }
+  let x0 = s.location().position().x
+  let y0 = if p == sp { s.location().position().y } else { abs(margin.top) }
+  let y1 = page.height - abs(margin.bottom)
+  let last = if p == ep { calc.floor((e.location().position().x - x0) / (info.colw + info.gutter) + 0.001) } else { info.n - 1 }
+  for k in range(1, calc.min(last, info.n - 1) + 1) {
+    place(top + left, dx: x0 + k * (info.colw + info.gutter) - info.gutter / 2, dy: y0,
+      line(angle: 90deg, length: y1 - y0, stroke: rule))
+  }
+}

@@ -239,3 +239,44 @@ func TestRenderDocumentTree(t *testing.T) {
 		t.Fatalf("unexpected render:\n%s", main)
 	}
 }
+
+// Article and leaflet styles must work for untitled text (a scan, a pasted
+// note) as well as for a full article, and stay accessible.
+func TestArticleAndLeafletStyles(t *testing.T) {
+	eng := typstEngine(t)
+	sources := []Source{
+		{Name: "Scan 9.10.26.md", Data: []byte("„Ābols“ ir 12 vārdu garš teikums, kas turpinās pietiekami ilgi, lai aptītu iniciāli vairākās rindās un vēl dažās rindās pēc tam.\n\nOtrā rindkopa.")},
+		{Name: "note.md", Data: []byte("**Quick** reminder: the kitchen is closed on Thursday while the new dishwasher is installed, so please use the other one.\n\n- one\n- two")},
+		{Name: "event.md", Data: []byte("# Open day\n\n*Workshops and talks*\n\nJoin us.[^1]\n\n## Highlights\n\n- Printing\n- Talks\n\n> Come and see.\n\n::: tip\nBook a seat.\n:::\n\n[^1]: Free entry.")},
+	}
+	for _, style := range []string{"magazine", "editorial", "newspaper", "blog", "leaflet", "flyer", "booklet"} {
+		for _, src := range sources {
+			res, err := Convert(context.Background(), src, Options{Style: style, Engine: eng, PDFStandards: []string{"ua-1"}})
+			if err != nil {
+				t.Fatalf("%s %s: %v", style, src.Name, err)
+			}
+			for _, w := range res.Warnings {
+				if strings.HasPrefix(w, "typesetting:") {
+					t.Errorf("%s %s: %s", style, src.Name, w)
+				}
+			}
+		}
+	}
+}
+
+// A booklet prints a cover only for a real title, not for a file name.
+func TestBookletCoverNeedsRealTitle(t *testing.T) {
+	for name, want := range map[string]string{"Scan 1.md": "title-from-name: true", "story.md": "title-from-name: false"} {
+		data := "Plain text."
+		if name == "story.md" {
+			data = "# A story\n\nPlain text."
+		}
+		res, err := Render(context.Background(), Source{Name: name, Data: []byte(data)}, Options{Style: "booklet"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if main := string(res.Bundle.Files["main.typ"]); !strings.Contains(main, want) {
+			t.Errorf("%s: missing %q", name, want)
+		}
+	}
+}

@@ -12,7 +12,7 @@ type Style struct {
 	Title       string
 	Description string
 	// Category groups styles: academic, business, legal, technical,
-	// correspondence, personal, publishing, data.
+	// correspondence, personal, publishing, data, article, leaflet.
 	Category string
 	Uses     []string
 	File     string
@@ -166,12 +166,49 @@ var builtin = []*Style{
 		Description: "Masthead with issue line and a three-column body.",
 		Uses:        []string{"newsletters", "bulletins", "club and school news"},
 		TOC:         "never", NumberSections: false, Signatures: "never", CitationStyle: "chicago", Columns: 3,
-		Aliases: []string{"bulletin", "magazine"}},
+		Aliases: []string{"bulletin"}},
 	{Name: "slides", Title: "Slides", Category: "publishing", File: "slides.typ", Pairing: "modern", FontSize: 20,
 		Description: "16:9 presentation: title slide, then a slide per heading.",
 		Uses:        []string{"presentations", "lectures", "pitch decks"},
 		TOC:         "never", NumberSections: false, Signatures: "never", CitationStyle: "apa",
 		Aliases: []string{"presentation", "deck", "slideshow"}},
+	// Articles
+	{Name: "magazine", Title: "Magazine feature", Category: "article", File: "magazine.typ", Pairing: "classic", FontSize: 10,
+		Description: "Feature spread: display headline, standfirst and byline across the page, two columns opening with a drop cap, pull quotes.",
+		Uses:        []string{"magazine features", "long reads", "interviews", "essays"},
+		TOC:         "never", NumberSections: false, Signatures: "never", CitationStyle: "chicago", Columns: 2,
+		Aliases: []string{"feature"}},
+	{Name: "editorial", Title: "Editorial", Category: "article", File: "editorial.typ", Pairing: "editorial", FontSize: 11,
+		Description: "The opinion page of a quality paper: kicker, large serif headline, ruled author line and one narrow justified column with a drop cap.",
+		Uses:        []string{"op-eds", "opinion pieces", "columns", "essays", "speeches"},
+		TOC:         "never", NumberSections: false, Signatures: "never", CitationStyle: "chicago",
+		Aliases: []string{"op-ed", "oped", "opinion", "column"}},
+	{Name: "newspaper", Title: "Newspaper", Category: "article", File: "newspaper.typ", Pairing: "scientific", FontSize: 9,
+		Description: "Broadsheet article: heavy and hairline rules, a headline across the page, deck and byline, ruled justified columns.",
+		Uses:        []string{"news articles", "press releases", "reports", "school papers"},
+		TOC:         "never", NumberSections: false, Signatures: "never", CitationStyle: "chicago", Columns: 3,
+		Aliases: []string{"broadsheet", "news", "press"}},
+	{Name: "blog", Title: "Web article", Category: "article", File: "blog.typ", Pairing: "modern", FontSize: 11,
+		Description: "A well-designed long-form web article in print: one sans column, large lede, clear headings, rounded code and wide images.",
+		Uses:        []string{"blog posts", "web articles", "tutorials", "saved web pages"},
+		TOC:         "never", NumberSections: false, Signatures: "never", CitationStyle: "apa",
+		Aliases: []string{"web-article", "post", "blogpost", "blog-post"}},
+	// Leaflets and flyers
+	{Name: "leaflet", Title: "Three-panel leaflet", Category: "leaflet", File: "leaflet.typ", Pairing: "source", FontSize: 9,
+		Description: "Landscape sheet in three fold-aligned panels with coloured panel heads; text flows from panel to panel.",
+		Uses:        []string{"tri-fold leaflets", "brochures", "menus", "programmes", "information sheets"},
+		TOC:         "never", NumberSections: false, Signatures: "never", CitationStyle: "apa", Columns: 3,
+		Aliases: []string{"trifold", "tri-fold", "brochure", "pamphlet"}},
+	{Name: "flyer", Title: "Flyer", Category: "leaflet", File: "flyer.typ", Pairing: "modern", FontSize: 15,
+		Description: "Poster-like one-pager: huge headline on a solid accent band, large text, checklist bullets and a call-to-action box.",
+		Uses:        []string{"flyers", "posters", "event announcements", "notices"},
+		TOC:         "never", NumberSections: false, Signatures: "never", CitationStyle: "apa",
+		Aliases: []string{"poster", "handbill"}},
+	{Name: "booklet", Title: "Booklet", Category: "leaflet", File: "booklet.typ", Pairing: "source", FontSize: 10,
+		Description: "Small-format booklet on A5 or half letter: cover, chapter-style headings, ornamental breaks and page numbers at the outer edge.",
+		Uses:        []string{"booklets", "zines", "programmes", "guides", "short stories"},
+		TOC:         "auto", NumberSections: false, Signatures: "never", CitationStyle: "chicago", TitlePage: true,
+		Aliases: []string{"zine", "chapbook"}},
 	// Business
 	{Name: "report", Title: "Report", Category: "business", File: "report.typ", Pairing: "source", FontSize: 10.5,
 		Description: "Professional report with a cover page, numbered sections and running headers.",

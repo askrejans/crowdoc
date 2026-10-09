@@ -22,7 +22,7 @@ crowdoc --watch paper.md                     # rebuild on every save
 
 ## Highlights
 
-- **36 styles** for academic, publishing, business, legal, technical,
+- **43 styles** for academic, publishing, business, legal, technical,
   correspondence and personal documents — from a two-column conference paper
   and an APA manuscript to invoices, letters for window envelopes, minutes,
   CVs and 16:9 slides — plus plain-text pages (book page, clean sans,
@@ -105,6 +105,8 @@ crowdoc style export <name> [dir]
 | Category | Styles |
 |---|---|
 | Academic | `article`, `paper` (two-column), `apa`, `essay` (MLA), `thesis`, `preprint`, `manuscript` (line-numbered), `notes` |
+| Articles | `magazine` (feature with drop cap), `editorial` (op-ed), `newspaper` (ruled columns), `blog` (web article) |
+| Leaflets and flyers | `leaflet` (three-panel, fold-aligned), `flyer`, `booklet` (A5 / half letter) |
 | Publishing | `book`, `elegant`, `newsletter`, `slides` |
 | Business | `report`, `proposal`, `whitepaper`, `brief`, `invoice`, `minutes`, `policy`, `data` |
 | Technical | `technical`, `manual` |

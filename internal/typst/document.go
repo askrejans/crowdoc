@@ -249,6 +249,10 @@ func (w *writer) metaDict(doc *ast.Document, o Options, s Settings) string {
 	// running title are none when the title block is hidden.
 	d.add("title-text", str(m.Title))
 	d.add("show-title", boolean(s.ShowTitle))
+	// title-from-name: the title only comes from the file name and was
+	// not asked for, so styles may leave out optional title furniture
+	// (a booklet cover) that would otherwise print it.
+	d.add("title-from-name", boolean(m.TitleFromName && m.ShowTitle == nil))
 	d.add("header-mode", str(s.HeaderMode))
 	d.add("footer-mode", str(s.FooterMode))
 	if s.ShowTitle {

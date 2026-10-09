@@ -35,3 +35,19 @@ func TestTextStylesAddNothing(t *testing.T) {
 		}
 	}
 }
+
+func TestArticleAndLeafletStylesRegistered(t *testing.T) {
+	for name, cat := range map[string]string{"magazine": "article", "editorial": "article", "newspaper": "article", "blog": "article",
+		"leaflet": "leaflet", "flyer": "leaflet", "booklet": "leaflet"} {
+		s, ok := LookupStyle(name)
+		if !ok || s.Name != name || s.Category != cat || s.NumberSections || s.Signatures != "never" {
+			t.Errorf("%s: %+v", name, s)
+		}
+	}
+	if s, _ := LookupStyle("bulletin"); s.Name != "newsletter" {
+		t.Errorf("bulletin resolves to %s", s.Name)
+	}
+	if s, _ := LookupStyle("booklet"); !s.TitlePage || !s.HasFooter() {
+		t.Error("booklet needs a cover and page numbers")
+	}
+}
