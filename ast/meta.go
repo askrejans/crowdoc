@@ -34,20 +34,28 @@ type Meta struct {
 	LOT            bool  // list of tables
 	NumberSections *bool // nil = style default
 	NoTitlePage    bool
-	Signatures     *bool // nil = style default
-	FontSize       int   // 9..14 pt; 0 = style default
-	Paper          string
-	Landscape      bool
-	Columns        int    // 1 or 2; 0 = style default
-	LineSpacing    string // "single", "onehalf", "double" or a factor
-	Margins        Margins
-	HeaderLeft     string
-	HeaderRight    string
-	FooterLeft     string
-	FooterRight    string
-	Logo           string // path or res: name
-	LinksAsNotes   *bool  // print link targets as footnotes
-	PDFA           bool   // produce an archival PDF/A document
+	// ShowTitle forces the title block on or off; nil prints real titles
+	// and hides a title derived from the file name unless a title page is
+	// printed.
+	ShowTitle *bool
+	// TitleFromName is set when Title was derived from the file name
+	// because neither metadata nor content named the document. Such a
+	// title still names the PDF but is not printed by default.
+	TitleFromName bool
+	Signatures    *bool // nil = style default
+	FontSize      int   // 9..14 pt; 0 = style default
+	Paper         string
+	Landscape     bool
+	Columns       int    // 1 or 2; 0 = style default
+	LineSpacing   string // "single", "onehalf", "double" or a factor
+	Margins       Margins
+	HeaderLeft    string
+	HeaderRight   string
+	FooterLeft    string
+	FooterRight   string
+	Logo          string // path or res: name
+	LinksAsNotes  *bool  // print link targets as footnotes
+	PDFA          bool   // produce an archival PDF/A document
 	// Fonts overrides the style's font choices (family names).
 	Fonts Fonts
 	// Accent overrides the style's accent colour ("#6A00FF").

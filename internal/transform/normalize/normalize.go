@@ -59,10 +59,12 @@ func inferTitle(doc *ast.Document, o Options) {
 	}
 	if doc.Meta.Title == "" {
 		doc.Meta.Title = o.FallbackTitle
+		doc.Meta.TitleFromName = true
 	}
 	// A short, fully italic first paragraph under the title is a subtitle
-	// (the usual shape of a standfirst in web pages and office files).
-	if doc.Meta.Subtitle == "" && len(doc.Blocks) > 0 {
+	// (the usual shape of a standfirst in web pages and office files). An
+	// untitled document keeps it as text.
+	if doc.Meta.Subtitle == "" && !doc.Meta.TitleFromName && len(doc.Blocks) > 0 {
 		if p, ok := doc.Blocks[0].(*ast.Para); ok {
 			ins := ast.TrimInlines(p.Inlines)
 			if len(ins) == 1 {

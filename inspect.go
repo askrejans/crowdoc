@@ -10,19 +10,22 @@ import (
 
 // Outline summarises a parsed document without typesetting it.
 type Outline struct {
-	Title     string        `json:"title"`
-	Subtitle  string        `json:"subtitle,omitempty"`
-	Authors   []string      `json:"authors,omitempty"`
-	Language  string        `json:"language,omitempty"`
-	Format    Format        `json:"format"`
-	Style     string        `json:"style"`
-	Keywords  []string      `json:"keywords,omitempty"`
-	Abstract  string        `json:"abstract,omitempty"`
-	Headings  []HeadingInfo `json:"headings"`
-	Counts    Counts        `json:"counts"`
-	Citations []string      `json:"citation_keys,omitempty"`
-	Images    []string      `json:"images,omitempty"`
-	Warnings  []string      `json:"warnings,omitempty"`
+	Title string `json:"title"`
+	// TitleFromName reports that Title was derived from the file name
+	// (the document names itself nowhere).
+	TitleFromName bool          `json:"title_from_name,omitempty"`
+	Subtitle      string        `json:"subtitle,omitempty"`
+	Authors       []string      `json:"authors,omitempty"`
+	Language      string        `json:"language,omitempty"`
+	Format        Format        `json:"format"`
+	Style         string        `json:"style"`
+	Keywords      []string      `json:"keywords,omitempty"`
+	Abstract      string        `json:"abstract,omitempty"`
+	Headings      []HeadingInfo `json:"headings"`
+	Counts        Counts        `json:"counts"`
+	Citations     []string      `json:"citation_keys,omitempty"`
+	Images        []string      `json:"images,omitempty"`
+	Warnings      []string      `json:"warnings,omitempty"`
 }
 
 // HeadingInfo is one entry of the document outline.
@@ -57,7 +60,7 @@ func Inspect(ctx context.Context, src Source, opts Options) (*Outline, error) {
 	}
 	doc := p.Doc()
 	o := &Outline{
-		Title: doc.Meta.Title, Subtitle: doc.Meta.Subtitle, Authors: doc.Meta.AuthorNames(),
+		Title: doc.Meta.Title, TitleFromName: doc.Meta.TitleFromName, Subtitle: doc.Meta.Subtitle, Authors: doc.Meta.AuthorNames(),
 		Format: p.Format(), Style: p.StyleName(), Keywords: doc.Meta.Keywords,
 		Abstract: ast.BlocksText(doc.Meta.Abstract), Warnings: p.Warnings(),
 		Language: pipeline.Language(p, opts.internal()),

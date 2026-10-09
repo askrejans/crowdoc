@@ -124,6 +124,12 @@ func Apply(m *ast.Meta, values map[string]any, parse ParseBlocks) []string {
 			if b, ok := Bool(v); ok {
 				m.NoTitlePage = !b
 			}
+		case "show-title", "title-block":
+			if b, ok := Bool(v); ok {
+				m.ShowTitle = &b
+			} else {
+				warn("frontmatter %q: expected true or false", rawKey)
+			}
 		case "signatures":
 			if b, ok := Bool(v); ok {
 				m.Signatures = &b

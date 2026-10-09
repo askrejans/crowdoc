@@ -55,6 +55,9 @@ type Bundle struct {
 // Settings records resolved layout decisions.
 type Settings struct {
 	TOC, NumberSections, TitlePage, Signatures bool
+	// ShowTitle prints the title block. A title derived from the file name
+	// is only printed on a title page unless the document asks for it.
+	ShowTitle bool
 }
 
 // Render converts doc into a Typst bundle.
@@ -162,6 +165,11 @@ func resolveSettings(doc *ast.Document, st *Style) Settings {
 	if doc.Meta.NumberSections != nil {
 		s.NumberSections = *doc.Meta.NumberSections
 	}
+	if doc.Meta.ShowTitle != nil {
+		s.ShowTitle = *doc.Meta.ShowTitle
+	} else {
+		s.ShowTitle = !doc.Meta.TitleFromName || s.TitlePage
+	}
 	switch {
 	case doc.Meta.TOC != nil:
 		s.TOC = *doc.Meta.TOC
@@ -220,10 +228,19 @@ func (w *writer) metaDict(doc *ast.Document, o Options, s Settings) string {
 		}
 		return textContent(v)
 	}
-	d.add("title", textContent(m.Title))
+	// title-text always names the PDF; the printed title, subtitle and
+	// running title are none when the title block is hidden.
 	d.add("title-text", str(m.Title))
-	d.add("subtitle", opt(m.Subtitle))
-	d.add("short-title", opt(firstNonEmpty(m.ShortTitle, m.Title)))
+	d.add("show-title", boolean(s.ShowTitle))
+	if s.ShowTitle {
+		d.add("title", textContent(m.Title))
+		d.add("subtitle", opt(m.Subtitle))
+		d.add("short-title", opt(firstNonEmpty(m.ShortTitle, m.Title)))
+	} else {
+		d.add("title", "none")
+		d.add("subtitle", "none")
+		d.add("short-title", "none")
+	}
 
 	var authors []string
 	for _, a := range m.Authors {
