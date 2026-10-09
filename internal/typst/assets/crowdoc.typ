@@ -136,6 +136,14 @@
     justification-limits: (tracking: (min: -0.01em, max: 0.02em)),
   )
   show math.equation: set text(font: meta.fonts.math)
+  // A display equation wider than its column is scaled down to fit.
+  show math.equation.where(block: true): it => layout(size => {
+    let w = measure(it).width
+    if w > size.width and size.width > 0pt {
+      let f = size.width / w * 100%
+      scale(x: f, y: f, reflow: true, it)
+    } else { it }
+  })
   set math.equation(supplement: cd-term(tm, "equation", "Equation"))
 
   // Code
@@ -226,6 +234,9 @@
   )
   show table: set text(size: th.table-size)
   show table: set par(justify: false)
+  // Narrow columns (multi-column styles, large type): long words in cells
+  // must be able to break instead of running into the next column.
+  show table: set text(hyphenate: true)
   show table.cell.where(y: 0): set text(weight: "semibold")
 
   // Quotes

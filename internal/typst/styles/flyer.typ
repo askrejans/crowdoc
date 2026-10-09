@@ -28,7 +28,7 @@
     })
   }
   let theme = (accent: accent, link: accent, ink: ink, heading: heading-ink, heading-font: head,
-    justify: false, first-line-indent: 0pt, par-spacing: 0.85em, leading: 0.55em, table-style: "striped",
+    justify: false, first-line-indent: 0pt, par-spacing: 0.85em, leading: 0.55em, table-style: "striped", table-size: 0.72em,
     table-head-fill: cd-tint(meta, accent, 85%), radius: 8pt, callout-style: "box", callout-show: cta,
     caption-size: 0.75em, code-size: 0.8em, list-indent: 0pt, hrule: "line")
   set page(

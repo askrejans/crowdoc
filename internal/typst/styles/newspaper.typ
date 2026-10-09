@@ -40,7 +40,7 @@
   )
   show: cd-base.with(meta, theme: theme)
   set text(hyphenate: true)
-  show table: set text(font: sans, size: 7pt, hyphenate: false)
+  show table: set text(font: sans, size: 7pt, hyphenate: true)
   set table(inset: (x: 3pt, y: 3pt))
 
   show heading.where(level: 1): it => block(above: 1.1em, below: 0.45em, sticky: true, {
