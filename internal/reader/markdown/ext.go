@@ -342,6 +342,9 @@ func matchingBracket(line []byte) int {
 		switch line[i] {
 		case '\\':
 			i++
+		case '`':
+			// Brackets inside a code span do not count.
+			i = skipCodeSpan(line, i) - 1
 		case '[':
 			depth++
 		case ']':
@@ -354,6 +357,30 @@ func matchingBracket(line []byte) int {
 		}
 	}
 	return -1
+}
+
+// skipCodeSpan returns the offset after the code span opening at i (or
+// after the backtick run when it is not closed on the line).
+func skipCodeSpan(line []byte, i int) int {
+	n := 0
+	for i+n < len(line) && line[i+n] == '`' {
+		n++
+	}
+	for j := i + n; j < len(line); {
+		if line[j] != '`' {
+			j++
+			continue
+		}
+		k := j
+		for k < len(line) && line[k] == '`' {
+			k++
+		}
+		if k-j == n {
+			return k
+		}
+		j = k
+	}
+	return i + n
 }
 
 func parseCiteItem(part string) (ast.CiteItem, bool) {
@@ -369,8 +396,8 @@ func parseCiteItem(part string) (ast.CiteItem, bool) {
 	}
 	if at > 0 {
 		r, _ := utf8.DecodeLastRuneInString(part[:at])
-		if r != '-' && !unicode.IsSpace(r) && !unicode.IsPunct(r) {
-			return ast.CiteItem{}, false // e-mail address, not a citation
+		if r != '-' && !unicode.IsSpace(r) && !unicode.IsPunct(r) || r == '\\' {
+			return ast.CiteItem{}, false // e-mail address or escaped "@", not a citation
 		}
 	}
 	item.Prefix = strings.TrimSpace(prefix)
@@ -488,7 +515,9 @@ func (divParser) Open(parent gast.Node, reader text.Reader, pc parser.Context) (
 	if colons < 3 {
 		return nil, parser.NoChildren
 	}
-	spec := strings.TrimSpace(strings.TrimRight(strings.TrimSpace(string(trimmed[colons:])), ":"))
+	// Closing colons on the opening line ("::: note :::") are dropped; a
+	// title may still end in a colon ("::: note Read this:").
+	spec := strings.TrimSpace(fenceTailRe.ReplaceAllString(strings.TrimSpace(string(trimmed[colons:])), ""))
 	if spec == "" {
 		return nil, parser.NoChildren // a closing fence without an open div
 	}
@@ -502,11 +531,17 @@ func (divParser) Open(parent gast.Node, reader text.Reader, pc parser.Context) (
 		node.Title = strings.TrimSpace(spec[end+1:])
 	} else {
 		word, title, _ := strings.Cut(spec, " ")
-		node.Attr.Classes = []string{strings.ToLower(strings.Trim(word, "{}."))}
+		if cl := strings.ToLower(strings.Trim(word, "{}.")); cl != "" {
+			node.Attr.Classes = []string{cl}
+		}
 		node.Title = strings.TrimSpace(title)
 	}
 	if t := node.Attr.Get("title"); t != "" && node.Title == "" {
 		node.Title = t
+		delete(node.Attr.KV, "title")
+		if len(node.Attr.KV) == 0 {
+			node.Attr.KV = nil
+		}
 	}
 	reader.Advance(seg.Len() - 1)
 	return node, parser.HasChildren
@@ -516,9 +551,10 @@ func (divParser) Continue(node gast.Node, reader text.Reader, pc parser.Context)
 	line, seg := reader.PeekLine()
 	trimmed := bytes.TrimSpace(line)
 	if len(trimmed) >= 3 && len(bytes.Trim(trimmed, ":")) == 0 {
-		// The innermost open div owns a closing fence.
+		// The innermost open div owns a closing fence; inside a fenced
+		// code block the line is code.
 		for _, b := range pc.OpenedBlocks() {
-			if b.Node != node && b.Node.Kind() == kindDiv && isDescendant(b.Node, node) {
+			if b.Node != node && (b.Node.Kind() == kindDiv || b.Node.Kind() == gast.KindFencedCodeBlock) && isDescendant(b.Node, node) {
 				return parser.Continue | parser.HasChildren
 			}
 		}
@@ -541,48 +577,71 @@ func (divParser) Close(node gast.Node, reader text.Reader, pc parser.Context) {}
 func (divParser) CanInterruptParagraph() bool                                 { return true }
 func (divParser) CanAcceptIndentedLine() bool                                 { return false }
 
-// parseAttrString parses Pandoc attributes: #id .class key=value key="v w".
+var fenceTailRe = regexp.MustCompile(`(?:\s+:+|:{3,})$`)
+
+// parseAttrString parses Pandoc attributes: #id .class key=value
+// key="v w". Quotes inside a quoted value are written with a backslash when
+// the attributes come from a text run (marked by escapeMark).
 func parseAttrString(s string) ast.Attr {
 	var a ast.Attr
-	for len(s) > 0 {
+	for {
 		s = strings.TrimLeft(s, " \t")
 		if s == "" {
 			break
 		}
-		var tok string
-		if i := strings.IndexAny(s, " \t"); i >= 0 && !strings.Contains(s[:i], `="`) && !strings.Contains(s[:i], `='`) {
-			tok, s = s[:i], s[i:]
-		} else if eq := strings.IndexByte(s, '='); eq >= 0 && eq+1 < len(s) && (s[eq+1] == '"' || s[eq+1] == '\'') {
-			q := s[eq+1]
-			end := strings.IndexByte(s[eq+2:], q)
-			if end < 0 {
-				tok, s = s, ""
-			} else {
-				tok, s = s[:eq+2+end+1], s[eq+2+end+1:]
-			}
-		} else {
-			tok, s = s, ""
-		}
+		tok, rest := nextAttrToken(s)
+		s = rest
 		switch {
 		case tok == "-":
 			a.Classes = append(a.Classes, "unnumbered")
 		case strings.HasPrefix(tok, "#"):
-			a.ID = tok[1:]
+			a.ID = dropMarks(tok[1:])
 		case strings.HasPrefix(tok, "."):
-			a.Classes = append(a.Classes, tok[1:])
+			if cl := dropMarks(tok[1:]); cl != "" {
+				a.Classes = append(a.Classes, cl)
+			}
 		case strings.Contains(tok, "="):
 			k, v, _ := strings.Cut(tok, "=")
-			v = strings.Trim(v, `"'`)
+			if k == "" {
+				continue
+			}
 			if a.KV == nil {
 				a.KV = map[string]string{}
 			}
-			a.KV[strings.ToLower(k)] = v
+			a.KV[strings.ToLower(dropMarks(k))] = dropMarks(unquoteAttr(v))
 		case tok != "":
-			a.Classes = append(a.Classes, tok)
+			a.Classes = append(a.Classes, dropMarks(tok))
 		}
 	}
 	return a
 }
+
+// nextAttrToken splits off one attribute; a quoted value may hold spaces.
+func nextAttrToken(s string) (string, string) {
+	i := 0
+	for i < len(s) && s[i] != ' ' && s[i] != '\t' {
+		if q := s[i]; (q == '"' || q == '\'') && i > 0 && s[i-1] == '=' {
+			j := i + 1
+			for j < len(s) && (s[j] != q || isEscapedAt(s, j)) {
+				j++
+			}
+			i = min(j+1, len(s))
+			continue
+		}
+		i++
+	}
+	return s[:i], s[i:]
+}
+
+// unquoteAttr removes the quotes around a value.
+func unquoteAttr(v string) string {
+	if len(v) >= 2 && (v[0] == '"' || v[0] == '\'') && v[len(v)-1] == v[0] && !isEscapedAt(v, len(v)-1) {
+		return v[1 : len(v)-1]
+	}
+	return strings.Trim(v, `"'`)
+}
+
+func dropMarks(s string) string { return strings.ReplaceAll(s, string(escapeMark), "") }
 
 // ---------------------------------------------------------------------------
 // ==highlight== and ^superscript^

@@ -1,6 +1,7 @@
 package markdown
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"net/url"
@@ -60,6 +61,9 @@ func (c *converter) blocks(parent gast.Node) []ast.Block {
 func (c *converter) block(n gast.Node) []ast.Block {
 	switch n := n.(type) {
 	case *gast.Paragraph:
+		if c.isPageBreak(n) {
+			return []ast.Block{&ast.PageBreak{}}
+		}
 		return c.paragraph(c.inlines(n), false)
 	case *gast.TextBlock:
 		return c.paragraph(c.inlines(n), true)
@@ -71,7 +75,7 @@ func (c *converter) block(n gast.Node) []ast.Block {
 		}
 		// "Title {-}" is Pandoc shorthand for an unnumbered heading.
 		if len(h.Inlines) > 0 {
-			if t, ok := h.Inlines[len(h.Inlines)-1].(*ast.Text); ok && strings.HasSuffix(t.Value, "{-}") {
+			if t, ok := h.Inlines[len(h.Inlines)-1].(*ast.Text); ok && strings.HasSuffix(t.Value, "{-}") && !isEscapedAt(t.Value, len(t.Value)-3) {
 				t.Value = strings.TrimSpace(strings.TrimSuffix(t.Value, "{-}"))
 				h.Unnumbered = true
 				// The automatic identifier was derived from "Title {-}".
@@ -176,9 +180,14 @@ func (c *converter) fencedCode(n *gast.FencedCodeBlock) []ast.Block {
 			end = len(info)
 		}
 		cb.Attr = parseAttrString(info[1:end])
-		if len(cb.Attr.Classes) > 0 {
-			cb.Lang = cb.Attr.Classes[0]
-			cb.Attr.Classes = cb.Attr.Classes[1:]
+		// The first class names the language, unless it describes the
+		// block's role ({.output}, {.numberLines}).
+		for i, cl := range cb.Attr.Classes {
+			if !codeRoleClasses[cl] {
+				cb.Lang = cl
+				cb.Attr.Classes = append(cb.Attr.Classes[:i:i], cb.Attr.Classes[i+1:]...)
+				break
+			}
 		}
 	default:
 		lang, rest, _ := strings.Cut(info, " ")
@@ -195,6 +204,12 @@ func (c *converter) fencedCode(n *gast.FencedCodeBlock) []ast.Block {
 		cb.Caption = ast.Str(cap)
 	}
 	return []ast.Block{cb}
+}
+
+// codeRoleClasses are code block classes that are not languages.
+var codeRoleClasses = map[string]bool{
+	"input": true, "output": true, "error": true, "stderr": true,
+	"numberLines": true, "number-lines": true, "numberlines": true,
 }
 
 var alertRe = regexp.MustCompile(`^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|INFO|DANGER|SUCCESS|EXAMPLE|QUOTE|ABSTRACT|SUMMARY|BUG|QUESTION|FAILURE|ERROR)\][+-]?[ \t]*`)
@@ -275,6 +290,7 @@ func (c *converter) table(n *east.Table) ast.Block {
 		row := ast.Row{}
 		for cell := r.FirstChild(); cell != nil; cell = cell.NextSibling() {
 			inl := ast.TrimInlines(c.inlines(cell))
+			unescapeCellMath(inl)
 			var blocks []ast.Block
 			if len(inl) > 0 {
 				blocks = []ast.Block{&ast.Plain{Inlines: inl}}
@@ -282,12 +298,39 @@ func (c *converter) table(n *east.Table) ast.Block {
 			row.Cells = append(row.Cells, ast.Cell{Blocks: blocks})
 		}
 		if _, ok := r.(*east.TableHeader); ok {
-			t.Head = append(t.Head, row)
+			// A header row of empty cells means "no header" (pipe
+			// tables always need one) when body rows follow.
+			if !emptyCells(row) || r.NextSibling() == nil {
+				t.Head = append(t.Head, row)
+			}
 		} else {
 			t.Body = append(t.Body, row)
 		}
 	}
 	return t
+}
+
+// unescapeCellMath turns "\|" in table-cell math into "|": as in code
+// spans, a pipe inside a pipe-table cell must be escaped.
+func unescapeCellMath(ins []ast.Inline) {
+	for _, in := range ins {
+		if m, ok := in.(*ast.Math); ok {
+			m.TeX = strings.ReplaceAll(m.TeX, `\|`, "|")
+			continue
+		}
+		if _, ok := in.(*ast.Note); !ok {
+			unescapeCellMath(ast.InlineChildren(in))
+		}
+	}
+}
+
+func emptyCells(r ast.Row) bool {
+	for _, c := range r.Cells {
+		if len(c.Blocks) > 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func align(a east.Alignment) ast.Align {
@@ -345,8 +388,9 @@ func (c *converter) div(n *divNode) ast.Block {
 		}
 	}
 	d.Blocks = c.blocks(n)
-	// Quarto puts the callout title in a leading heading.
-	if len(d.Title) == 0 && len(d.Blocks) > 0 && isCallout(d.Attr) {
+	// Quarto puts the callout title in a leading heading (written as the
+	// first thing inside the div).
+	if _, ok := n.FirstChild().(*gast.Heading); ok && len(d.Title) == 0 && len(d.Blocks) > 0 && isCallout(d.Attr) {
 		if h, ok := d.Blocks[0].(*ast.Heading); ok {
 			d.Title = h.Inlines
 			d.Blocks = d.Blocks[1:]
@@ -377,6 +421,9 @@ func (c *converter) htmlBlock(n *gast.HTMLBlock) []ast.Block {
 
 func (c *converter) htmlString(src string) []ast.Block {
 	trimmed := strings.TrimSpace(src)
+	if pageBreakCommentRe.MatchString(trimmed) {
+		return []ast.Block{&ast.PageBreak{}}
+	}
 	if trimmed == "" || (strings.HasPrefix(trimmed, "<!--") && strings.HasSuffix(trimmed, "-->")) {
 		return nil
 	}
@@ -392,6 +439,24 @@ func (c *converter) htmlString(src string) []ast.Block {
 		return nil
 	}
 	return []ast.Block{&ast.Para{Inlines: ast.Str(text)}}
+}
+
+// pageBreakCommentRe matches the HTML comments used as page breaks
+// (<!-- pagebreak -->, <!-- newpage -->).
+var pageBreakCommentRe = regexp.MustCompile(`(?i)^<!--\s*(?:pagebreak|newpage|page-break)\s*-->$`)
+
+// isPageBreak reports whether a paragraph is Pandoc's page-break
+// convention: a line holding only \newpage or \pagebreak.
+func (c *converter) isPageBreak(n *gast.Paragraph) bool {
+	if n.Lines().Len() != 1 {
+		return false
+	}
+	seg := n.Lines().At(0)
+	switch strings.TrimSpace(string(seg.Value(c.src))) {
+	case `\newpage`, `\pagebreak`:
+		return true
+	}
+	return false
 }
 
 func htmlText(src string) string {
@@ -478,7 +543,7 @@ func (c *converter) textBlock(ins []ast.Inline, plain bool) []ast.Block {
 
 func lineBlock(ins []ast.Inline) ast.Block {
 	t, ok := ins[0].(*ast.Text)
-	if !ok || !strings.HasPrefix(t.Value, "| ") {
+	if !ok || !strings.HasPrefix(t.Value, "| ") && t.Value != "|" {
 		return nil
 	}
 	var lines [][]ast.Inline
@@ -492,14 +557,18 @@ func lineBlock(ins []ast.Inline) ast.Block {
 		}
 		if atStart {
 			tx, ok := in.(*ast.Text)
-			if !ok || !strings.HasPrefix(tx.Value, "| ") {
+			if !ok || (!strings.HasPrefix(tx.Value, "| ") && tx.Value != "|") {
 				return nil
 			}
-			rest := tx.Value[2:]
+			rest := strings.TrimPrefix(tx.Value[1:], " ")
 			// Keep indentation: leading spaces become no-break spaces.
 			trimmed := strings.TrimLeft(rest, " ")
-			in = &ast.Text{Value: strings.Repeat("\u00a0", len(rest)-len(trimmed)) + trimmed}
 			atStart = false
+			v := strings.Repeat("\u00a0", len(rest)-len(trimmed)) + trimmed
+			if v == "" {
+				continue // an empty line
+			}
+			in = &ast.Text{Value: v}
 		}
 		cur = append(cur, in)
 	}
@@ -512,12 +581,22 @@ func lineBlock(ins []ast.Inline) ast.Block {
 
 var leadingAttrRe = regexp.MustCompile(`^\s*\{([^{}]*)\}`)
 
+// Escaped braces inside {…} are protected by same-length (four-byte)
+// stand-ins while the attribute block is located.
+var (
+	protectBraces = strings.NewReplacer(string(escapeMark)+"{", "\U000F0001", string(escapeMark)+"}", "\U000F0002")
+)
+
 func leadingAttr(s string) (ast.Attr, string, bool) {
-	m := leadingAttrRe.FindStringSubmatchIndex(s)
+	p := protectBraces.Replace(s)
+	m := leadingAttrRe.FindStringSubmatchIndex(p)
 	if m == nil {
 		return ast.Attr{}, s, false
 	}
-	return parseAttrString(s[m[2]:m[3]]), s[m[1]:], true
+	// The attributes were part of a text run: escaped braces and quotes
+	// are literal.
+	inner := strings.NewReplacer("\U000F0001", string(escapeMark)+"{", "\U000F0002", string(escapeMark)+"}").Replace(p[m[2]:m[3]])
+	return parseAttrString(inner), s[m[1]:], true
 }
 
 // attachCaptions moves "Table: caption" / ": caption" paragraphs adjacent to
@@ -555,10 +634,17 @@ func attachCaptions(blocks []ast.Block) []ast.Block {
 }
 
 func captionPara(b ast.Block, prefix string) ([]ast.Inline, ast.Attr, bool) {
-	p, ok := b.(*ast.Para)
-	if !ok || len(p.Inlines) == 0 {
+	var inlines []ast.Inline
+	switch p := b.(type) {
+	case *ast.Para:
+		inlines = p.Inlines
+	case *ast.Plain:
+		inlines = p.Inlines // a caption in a tight list item
+	}
+	if len(inlines) == 0 {
 		return nil, ast.Attr{}, false
 	}
+	p := &ast.Para{Inlines: inlines}
 	t, ok := p.Inlines[0].(*ast.Text)
 	if !ok {
 		return nil, ast.Attr{}, false
@@ -576,7 +662,8 @@ func captionPara(b ast.Block, prefix string) ([]ast.Inline, ast.Attr, bool) {
 	var attr ast.Attr
 	// Trailing {#tbl:id}
 	if last, ok := ins[len(ins)-1].(*ast.Text); ok {
-		if i := strings.LastIndex(last.Value, "{"); i >= 0 && strings.HasSuffix(strings.TrimSpace(last.Value), "}") {
+		v := strings.TrimSpace(last.Value)
+		if i := strings.LastIndex(last.Value, "{"); i >= 0 && !isEscapedAt(last.Value, i) && strings.HasSuffix(v, "}") && !isEscapedAt(v, len(v)-1) {
 			attr = parseAttrString(strings.TrimSuffix(strings.TrimSpace(last.Value[i+1:]), "}"))
 			ins[len(ins)-1] = &ast.Text{Value: strings.TrimRight(last.Value[:i], " ")}
 		}
@@ -601,8 +688,24 @@ func (c *converter) inlines(parent gast.Node) []ast.Inline {
 		out = append(out, c.inline(n)...)
 	}
 	out = ast.MergeText(c.pairHTML(out))
-	out = c.imageAttributes(out)
-	return smartenText(out)
+	return c.finishInlines(out, 0)
+}
+
+// finishInlines applies image attributes and smart punctuation, also
+// inside formatting built from inline HTML tags.
+func (c *converter) finishInlines(out []ast.Inline, depth int) []ast.Inline {
+	out = c.imageAttributes(ast.MergeText(out))
+	out = smartenText(out)
+	if depth < 32 {
+		for _, in := range out {
+			switch n := in.(type) {
+			case *ast.Emph, *ast.Strong, *ast.Strike, *ast.Underline, *ast.Superscript,
+				*ast.Subscript, *ast.SmallCaps, *ast.Highlight, *ast.Span, *ast.Link:
+				setInlineChildren(n, c.finishInlines(ast.InlineChildren(n), depth+1))
+			}
+		}
+	}
+	return out
 }
 
 func (c *converter) inline(n gast.Node) []ast.Inline {
@@ -612,7 +715,7 @@ func (c *converter) inline(n gast.Node) []ast.Inline {
 		if n.IsRaw() {
 			v = string(n.Segment.Value(c.src))
 		} else {
-			v = unescape(n.Segment.Value(c.src))
+			v = unescapeText(n.Segment.Value(c.src))
 		}
 		out := []ast.Inline{&ast.Text{Value: v}}
 		switch {
@@ -625,7 +728,7 @@ func (c *converter) inline(n gast.Node) []ast.Inline {
 	case *gast.String:
 		v := string(n.Value)
 		if !n.IsRaw() && !n.IsCode() {
-			v = unescape(n.Value)
+			v = unescapeText(n.Value)
 		}
 		return []ast.Inline{&ast.Text{Value: v}}
 	case *gast.CodeSpan:
@@ -694,7 +797,7 @@ func (c *converter) inline(n gast.Node) []ast.Inline {
 	case *superNode:
 		return []ast.Inline{&ast.Superscript{Inlines: c.inlines(n)}}
 	case *subNode:
-		return []ast.Inline{&ast.Subscript{Inlines: []ast.Inline{&ast.Text{Value: unescape([]byte(n.Value))}}}}
+		return []ast.Inline{&ast.Subscript{Inlines: []ast.Inline{&ast.Text{Value: unescapeText([]byte(n.Value))}}}}
 	case *inlineNoteNode:
 		blocks, w := convertSource(c.ctx, n.Raw, c.res)
 		for _, x := range w {
@@ -804,6 +907,14 @@ func (c *converter) imageAttributes(ins []ast.Inline) []ast.Inline {
 		img.Attr.Classes = attr.Classes
 		img.Width = attr.Get("width")
 		img.Height = attr.Get("height")
+		// fig-alt (Pandoc) gives a figure alt text apart from its caption.
+		if alt, ok := attr.KV["fig-alt"]; ok {
+			img.Alt = alt
+			delete(attr.KV, "fig-alt")
+			if len(attr.KV) == 0 {
+				attr.KV = nil
+			}
+		}
 		img.Attr.KV = attr.KV
 		if rest == "" {
 			ins = append(ins[:i+1], ins[i+2:]...)
@@ -935,14 +1046,70 @@ func wrapTag(tag string, attrs map[string]string, ch []ast.Inline) []ast.Inline 
 		}
 		return ch
 	case "span":
-		if cl := attrs["class"]; cl != "" {
-			return []ast.Inline{&ast.Span{Attr: ast.Attr{Classes: strings.Fields(cl)}, Inlines: ch}}
-		}
-		return ch
+		return spanTag(attrs, ch)
 	case "q":
 		return append(append([]ast.Inline{&ast.Text{Value: "\""}}, ch...), &ast.Text{Value: "\""})
 	}
 	return ch
+}
+
+func setInlineChildren(in ast.Inline, kids []ast.Inline) {
+	switch n := in.(type) {
+	case *ast.Emph:
+		n.Inlines = kids
+	case *ast.Strong:
+		n.Inlines = kids
+	case *ast.Strike:
+		n.Inlines = kids
+	case *ast.Underline:
+		n.Inlines = kids
+	case *ast.Superscript:
+		n.Inlines = kids
+	case *ast.Subscript:
+		n.Inlines = kids
+	case *ast.SmallCaps:
+		n.Inlines = kids
+	case *ast.Highlight:
+		n.Inlines = kids
+	case *ast.Span:
+		n.Inlines = kids
+	case *ast.Link:
+		n.Inlines = kids
+	}
+}
+
+// spanTag converts <span>: the classes smallcaps, underline and mark
+// become formatting (as in the HTML reader); other spans keep their id,
+// classes and attributes.
+func spanTag(attrs map[string]string, ch []ast.Inline) []ast.Inline {
+	var a ast.Attr
+	for k, v := range attrs {
+		switch k {
+		case "id":
+			a.ID = v
+		case "class":
+			a.Classes = strings.Fields(v)
+		default:
+			if a.KV == nil {
+				a.KV = map[string]string{}
+			}
+			a.KV[k] = v
+		}
+	}
+	if a.ID == "" && len(a.KV) == 0 && len(a.Classes) == 1 {
+		switch a.Classes[0] {
+		case "smallcaps":
+			return []ast.Inline{&ast.SmallCaps{Inlines: ch}}
+		case "underline":
+			return []ast.Inline{&ast.Underline{Inlines: ch}}
+		case "mark":
+			return []ast.Inline{&ast.Highlight{Inlines: ch}}
+		}
+	}
+	if a.ID == "" && len(a.Classes) == 0 && len(a.KV) == 0 {
+		return ch
+	}
+	return []ast.Inline{&ast.Span{Attr: a, Inlines: ch}}
 }
 
 // parseTag inspects a single raw HTML inline token.
@@ -977,6 +1144,82 @@ func unescape(b []byte) string {
 	v = util.ResolveNumericReferences(v)
 	v = util.ResolveEntityNames(v)
 	return string(v)
+}
+
+// escapeMark precedes every character that was written as a backslash
+// escape or an entity while a text run is being converted. The checks that
+// work on converted text (smart punctuation, line blocks, alerts, captions,
+// "{-}" and "{…}" attribute suffixes) therefore never match escaped
+// characters; stripEscapeMarks removes the marks afterwards.
+const escapeMark = '\uFDD0'
+
+// unescapeText resolves backslash escapes and entities like unescape, but
+// marks each resolved character with escapeMark.
+func unescapeText(b []byte) string {
+	if bytes.IndexByte(b, '\\') < 0 && bytes.IndexByte(b, '&') < 0 {
+		return string(b)
+	}
+	var sb strings.Builder
+	for i := 0; i < len(b); {
+		switch {
+		case b[i] == '\\' && i+1 < len(b) && util.IsPunct(b[i+1]):
+			sb.WriteRune(escapeMark)
+			sb.WriteByte(b[i+1])
+			i += 2
+			continue
+		case b[i] == '&':
+			if m := entityRe.Find(b[i:]); m != nil {
+				ent, end := m, len(m)-1
+				if r := unescape(ent); r != string(ent) {
+					sb.WriteRune(escapeMark)
+					sb.WriteString(r)
+					i += end + 1
+					continue
+				}
+			}
+		}
+		sb.WriteByte(b[i])
+		i++
+	}
+	return sb.String()
+}
+
+var entityRe = regexp.MustCompile(`^&(?:#[0-9]{1,7}|#[xX][0-9a-fA-F]{1,6}|[A-Za-z][A-Za-z0-9]{0,31});`)
+
+// isEscapedAt reports whether the character at byte offset i of s was
+// escaped in the source.
+func isEscapedAt(s string, i int) bool {
+	return i >= 3 && s[i-3:i] == string(escapeMark)
+}
+
+// stripEscapeMarks removes escape marks from all text in blocks. A mark
+// protects the character after it, which is kept even if it is itself the
+// mark's code point (written as an entity).
+func stripEscapeMarks(blocks []ast.Block) {
+	strip := func(s string) string {
+		if !strings.ContainsRune(s, escapeMark) {
+			return s
+		}
+		var sb strings.Builder
+		skip := false
+		for _, r := range s {
+			if r == escapeMark && !skip {
+				skip = true
+				continue
+			}
+			skip = false
+			sb.WriteRune(r)
+		}
+		return sb.String()
+	}
+	ast.WalkInlines(blocks, func(in ast.Inline) {
+		switch n := in.(type) {
+		case *ast.Text:
+			n.Value = strip(n.Value)
+		case *ast.Image:
+			n.Alt = strip(n.Alt)
+		}
+	})
 }
 
 // smartenText applies Pandoc's "smart" punctuation to text runs: --- → —,

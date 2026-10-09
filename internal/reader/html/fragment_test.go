@@ -164,6 +164,9 @@ func TestFragmentTables(t *testing.T) {
 			<tbody><tr><td>x</td><td>1</td><td rowspan="0">z</td></tr><tr><td>y</td><td>2</td></tr></tbody>
 			<tfoot><tr><td>Total</td><td colspan="2">3</td></tr></tfoot></table>`,
 			`T{cols:0,0,0; head: (r2 Pl[Name]) (c2 Pl[Score]) / (Pl[A]) (Pl[B]); body: (Pl[x]) (Pl[1]) (r2 Pl[z]) / (Pl[y]) (Pl[2]); foot: (Pl[Total]) (c2 Pl[3])}`},
+		{"role=table keeps a one-cell table",
+			`<table role="table"><tr><td><p>a</p><p>b</p></td></tr></table>`,
+			`T{cols:0; body: (P[a] P[b])}`},
 		{"th-only first row is header",
 			`<table><tr><th>H1</th><th>H2</th></tr><tr><td>a</td><td>b</td></tr></table>`,
 			`T{cols:0,0; head: (Pl[H1]) (Pl[H2]); body: (Pl[a]) (Pl[b])}`},

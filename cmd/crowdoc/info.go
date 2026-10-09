@@ -55,6 +55,7 @@ Output:
       --pdfa                 Archival PDF/A-2b      --pdf-standard <a-2b,ua-1,…>
       --accessible           Tagged, accessible PDF/UA-1
       --typst                Write the Typst project instead of a PDF (--source-dir <dir>)
+      --markdown             Write clean Markdown (+ images/) instead of a PDF; also when -o ends in .md
   -j, --jobs <n>             Parallel conversions in batch mode (default: CPUs, max 4)
 
 Engine and resources:

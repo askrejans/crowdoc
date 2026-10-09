@@ -35,6 +35,7 @@ type cli struct {
 	deterministic bool
 	workDir       string
 	emitSource    bool
+	markdown      bool
 	sourceDir     string
 	timeout       time.Duration
 	quiet         bool
@@ -151,6 +152,22 @@ func convertOne(ctx context.Context, c *cli, in, out string, opts crowdoc.Option
 		printWarnings(stderr, res.Warnings, c.quiet)
 		if !c.quiet {
 			fmt.Fprintf(stdout, "  %s/ (Typst project)\n", dir)
+		}
+		return nil
+	}
+	if c.markdown || strings.EqualFold(extOf(out), ".md") {
+		res, err := crowdoc.MarkdownFile(ctx, in, out, opts, crowdoc.MarkdownOptions{})
+		if res != nil {
+			printWarnings(stderr, res.Warnings, c.quiet)
+		}
+		if err != nil {
+			return err
+		}
+		if out == "" {
+			out = crowdoc.DefaultMarkdownPath(in)
+		}
+		if !c.quiet {
+			fmt.Fprintf(stdout, "  %s (Markdown, %d images)\n", out, len(res.Files))
 		}
 		return nil
 	}
@@ -364,6 +381,8 @@ func parseArgs(args []string) (*cli, string, error) {
 			c.deterministic = true
 		case "--workdir", "--keep-workdir":
 			c.workDir, err = need(&i, a)
+		case "--markdown", "--md":
+			c.markdown = true
 		case "--typst", "--source", "--tex":
 			c.emitSource = true
 		case "--source-dir":

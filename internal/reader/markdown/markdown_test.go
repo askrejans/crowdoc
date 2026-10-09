@@ -138,3 +138,64 @@ func TestDecodeText(t *testing.T) {
 		t.Fatalf("utf-16: %q", got)
 	}
 }
+
+func TestPageBreaks(t *testing.T) {
+	for _, src := range []string{"a\n\n\\newpage\n\nb", "a\n\n\\pagebreak\n\nb", "a\n\n<!-- pagebreak -->\n\nb", "a\n\n<!-- NewPage -->\n\nb"} {
+		if got := dump(t, src); got != "Para a\nPageBreak\nPara b\n" {
+			t.Errorf("%q: %s", src, got)
+		}
+	}
+	// Escaped, inline or inside other text it stays text.
+	for _, src := range []string{"\\\\newpage", "a \\newpage", "<!-- note -->"} {
+		if got := dump(t, src); strings.Contains(got, "PageBreak") {
+			t.Errorf("%q: %s", src, got)
+		}
+	}
+}
+
+// TestEscapedMarkersStayText checks that escaped characters never trigger
+// the conventions the reader applies to text: smart punctuation, alerts,
+// captions, unnumbered headings, attributes, line blocks, citations.
+func TestEscapedMarkersStayText(t *testing.T) {
+	cases := []struct{ src, want string }{
+		{`a-\-b and x.\.\.`, "Para a--b and x...\n"},
+		{"> \\[!NOTE] text", "Quote\n  Para [!NOTE] text\n"},
+		{"Table\\: not a caption\n\n| a |\n|---|\n| 1 |", "Para Table: not a caption\n"},
+		{"## Title \\{-}", "H2{#title--} Title {-}\n"},
+		{"![a](x.png)\\{width=50%}", "Para ![a](x.png){width=50%}\n"},
+		{"\\| a\n\\| b", "Para | a↵| b\n"},
+		{"[see \\@doe2020]", "Para [see @doe2020]\n"},
+		{"&#91;a](b)", "Para [a](b)\n"},
+	}
+	for _, c := range cases {
+		if got := dump(t, c.src); !strings.HasPrefix(got, c.want) {
+			t.Errorf("%q:\n got %q\nwant %q", c.src, got, c.want)
+		}
+	}
+}
+
+func TestReaderExtensions(t *testing.T) {
+	cases := []struct{ name, src, want string }{
+		{"smallcaps span", `<span class="smallcaps">Ab</span> <span class="underline">u</span> <span id="k" class="x" data-v="1">s</span>`, "Para SmallCaps(Ab) Underline(u) Span(s)"},
+		{"figure alt text", "![Caption](x.png){fig-alt=\"Alt \\\"text\\\"\" width=50%}", `Figure src="x.png" w=50% cap=Caption`},
+		{"title ending in a colon", "::: tip Read this:\nBody\n:::", "Div{.tip} title=Read this:"},
+		{"code role class", "```{.output}\nx\n```", `Code[]{.output} "x"`},
+		{"caption in a tight list", "- Table: Cap\n\n  | a |\n  |---|\n  | 1 |", "cap=Cap"},
+		{"pipe table without header", "|   |   |\n|---|---|\n| 1 | 2 |", "body: |1 |2"},
+		{"pipes in cell math", "| a |\n|---|\n| $\\|x\\|$ |", "body: ||x|"},
+		{"line block with empty line", "| one\n|\n| two", "LineBlock | one |  | two"},
+		{"brackets in code are not a citation", "[`]` x @doe](u)", "Para [`]` x @doe](u)"},
+		{"fence line inside code in a div", "::: note\n```\n:::\n```\n:::", `Code[] ":::"`},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := dump(t, c.src); !strings.Contains(got, c.want) {
+				t.Errorf("missing %q in:\n%s", c.want, got)
+			}
+		})
+	}
+	doc := read(t, "![Caption](x.png){fig-alt=\"Alt \\\"text\\\"\"}")
+	if img := doc.Blocks[0].(*ast.Figure).Image; img.Alt != `Alt "text"` {
+		t.Errorf("fig-alt: %q", img.Alt)
+	}
+}

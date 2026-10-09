@@ -67,6 +67,9 @@ func (p *prepared) Doc() *ast.Document { return p.doc }
 // Warnings returns the problems found while reading.
 func (p *prepared) Warnings() []string { return p.warnings }
 
+// BaseDir returns the directory relative resources are resolved against.
+func (p *prepared) BaseDir() string { return p.baseDir }
+
 // Format returns the detected input format.
 func (p *prepared) Format() Format { return p.format }
 
@@ -102,4 +105,4 @@ func logf(l *slog.Logger, msg string, args ...any) {
 }
 
 // Version is the library version (re-exported as crowdoc.Version).
-const Version = "2.0.4"
+const Version = "2.1.0"
