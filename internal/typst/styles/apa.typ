@@ -37,8 +37,8 @@
   show quote.where(block: true): it => pad(left: 0.5in, it.body)
 
   let t = meta.terms
-  // Title page
-  page({
+  // Title page (student papers may also start with the title only)
+  if meta.title-page { page({
     set par(first-line-indent: 0pt, justify: false)
     v(3 * 1.4em + 2em)
     align(center, {
@@ -61,7 +61,7 @@
       align(center, text(weight: "bold", t.at("author-note", default: "Author Note")))
       note
     }
-  })
+  }) }
   if meta.abstract != none {
     page({
       align(center, text(weight: "bold", t.at("abstract", default: "Abstract")))

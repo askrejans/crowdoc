@@ -8,10 +8,13 @@
   let theme = (accent: accent, link: rgb("#1a1a1a"), heading: cd-color(meta, "heading", rgb("#111111")), first-line-indent: 1.25em,
     par-spacing: 0.65em, leading: if meta.leading != none { meta.leading } else { 0.95em },
     table-style: "booktabs", callout-style: "minimal")
+  // Front matter (title page, abstract, lists) is numbered in roman figures;
+  // without any, the chapters start on page 1.
+  let front = meta.title-page or meta.abstract != none or meta.toc or meta.lof or meta.lot
   set page(
     paper: meta.paper,
     margin: cd-margins(meta, top: 2.5cm, bottom: 2.5cm, left: 3.5cm, right: 2cm),
-    numbering: "i",
+    numbering: if front { "i" } else { "1" },
     footer: context { set text(size: 9.5pt); align(center, counter(page).display()) },
   )
   show: cd-base.with(meta, theme: theme)
@@ -42,8 +45,8 @@
   show: cd-chapter-numbering
 
   let t = meta.terms
-  // Title page
-  page(numbering: none, footer: none, {
+  // Title page (or, without one, a title block on the first page)
+  if meta.title-page { page(numbering: none, footer: none, {
     set par(justify: false, first-line-indent: 0pt)
     align(center, {
       set text(size: 12pt)
@@ -72,7 +75,15 @@
     v(1.5cm)
     align(center, text(size: 12pt, cd-join((meta.location, if meta.date != none { meta.date }), sep: [ ])))
   })
-  counter(page).update(1)
+  counter(page).update(1) } else {
+    align(center, {
+      cd-balanced(text(size: 18pt, weight: "bold", hyphenate: false, meta.title))
+      if meta.subtitle != none { v(0.4em); text(size: 13pt, meta.subtitle) }
+      let names = cd-names(meta)
+      if names.len() > 0 { v(0.6em); text(size: 12pt, names.join(", ")) }
+      v(1.6em)
+    })
+  }
   if meta.abstract != none {
     heading(level: 1, numbering: none, outlined: false, t.at("abstract", default: "Abstract"))
     meta.abstract
@@ -84,8 +95,15 @@
   }
   if meta.lof { pagebreak(weak: true); outline(title: t.at("list-of-figures", default: "List of Figures"), target: figure.where(kind: image)) }
   if meta.lot { pagebreak(weak: true); outline(title: t.at("list-of-tables", default: "List of Tables"), target: figure.where(kind: table)) }
-  pagebreak(weak: true)
-  set page(numbering: "1")
-  counter(page).update(1)
-  body
+  // Chapters start on a fresh, arabic-numbered page after any front matter;
+  // without front matter the text follows the title on page 1 (a page set
+  // rule here would start a new page).
+  if front {
+    pagebreak(weak: true)
+    set page(numbering: "1")
+    counter(page).update(1)
+    body
+  } else {
+    body
+  }
 }

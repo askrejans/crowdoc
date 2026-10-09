@@ -166,7 +166,14 @@ func resolveSettings(doc *ast.Document, st *Style) Settings {
 	case doc.Meta.TOC != nil:
 		s.TOC = *doc.Meta.TOC
 	case st.TOC == "always":
-		s.TOC = true
+		// Even "always" needs something to list: a document without
+		// headings (a scanned page, a short note) gets no empty contents.
+		ast.WalkBlocks(doc.Blocks, func(b ast.Block) bool {
+			if _, ok := b.(*ast.Heading); ok {
+				s.TOC = true
+			}
+			return !s.TOC
+		})
 	case st.TOC == "auto":
 		// A contents page only pays off in a longer document.
 		top, words := 0, 0

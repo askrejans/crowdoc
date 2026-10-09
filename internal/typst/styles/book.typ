@@ -52,8 +52,9 @@
   show heading.where(level: 2): it => block(above: 1.8em, below: 0.8em, sticky: true, align(center, text(size: meta.font-size, tracking: 0.08em, smallcaps(lower(it.body)))))
   show heading.where(level: 3): it => block(above: 1.3em, below: 0.6em, sticky: true, text(size: meta.font-size, style: "italic", it.body))
 
-  // Title page and its verso.
-  page(header: none, footer: none, {
+  // Title page and its verso (or, without a title page, the title opens
+  // the first page).
+  if meta.title-page { page(header: none, footer: none, {
     v(25%)
     align(center, {
       cd-balanced(text(size: 28pt, hyphenate: false, meta.title))
@@ -72,7 +73,16 @@
     if meta.version != none [ \ #meta.version]
     if meta.keywords.len() > 0 [ \ #meta.keywords.join(" · ")]
   })
-  counter(page).update(1)
+  counter(page).update(1) } else if meta.title != none and meta.title != "" {
+    align(center, {
+      v(2em)
+      cd-balanced(text(size: 22pt, hyphenate: false, meta.title))
+      if meta.subtitle != none { v(0.5em); text(size: 12pt, style: "italic", fill: muted, meta.subtitle) }
+      let names = cd-names(meta)
+      if names.len() > 0 { v(0.8em); text(size: 11pt, tracking: 0.12em, smallcaps(lower(names.join(", ")))) }
+      v(2.4em)
+    })
+  }
   if meta.abstract != none { page(header: none, { v(30%); pad(x: 1.5cm, text(style: "italic", meta.abstract)) }) }
   if meta.toc { outline(depth: 2); pagebreak(weak: true) }
   body
