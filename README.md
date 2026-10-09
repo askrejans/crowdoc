@@ -22,10 +22,11 @@ crowdoc --watch paper.md                     # rebuild on every save
 
 ## Highlights
 
-- **29 styles** for academic, publishing, business, legal, technical,
+- **36 styles** for academic, publishing, business, legal, technical,
   correspondence and personal documents — from a two-column conference paper
   and an APA manuscript to invoices, letters for window envelopes, minutes,
-  CVs and 16:9 slides.
+  CVs and 16:9 slides — plus plain-text pages (book page, clean sans,
+  typewriter, large print, squared notebook) that add nothing to the text.
 - **16 colour schemes** (Oxford, Bordeaux, Emerald, Graphite, Champagne,
   Nordic, Midnight, a dark Night scheme for screens, …) plus per-role colour
   overrides, applied to every style.
@@ -107,7 +108,8 @@ crowdoc style export <name> [dir]
 | Business | `report`, `proposal`, `whitepaper`, `brief`, `invoice`, `minutes`, `policy`, `data` |
 | Technical | `technical`, `manual` |
 | Legal | `legal`, `ligums` (Latvian agreements) |
-| Correspondence | `letter` (DIN 5008 window on A4), `memo` |
+| Plain text | `page`, `clean`, `typewriter`, `largeprint`, `notebook` — nothing printed that is not in the text |
+| Correspondence | `letter` (DIN 5008 window on A4), `formal` (block format), `personal`, `memo` |
 | General & personal | `minimal`, `modern`, `cv` |
 
 The style is chosen from frontmatter `style:`, the document type or title
