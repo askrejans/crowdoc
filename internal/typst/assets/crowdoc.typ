@@ -629,3 +629,43 @@
     text-content.split("\n").map(l => l.replace(" ", "\u{a0}")).join(linebreak())
   })
 }
+
+// ---------------------------------------------------------------------------
+// --- text and letter styles ---
+// ---------------------------------------------------------------------------
+
+// Whether the document language is written right to left.
+#let cd-rtl(meta) = meta.lang in ("ar", "he", "fa", "ur", "yi", "ps", "ug", "sd", "dv", "ckb")
+
+// Width and height of the page for meta.paper and meta.landscape.
+#let cd-page-dims(meta) = {
+  let sizes = (
+    "a3": (297mm, 420mm), "a4": (210mm, 297mm), "a5": (148mm, 210mm), "a6": (105mm, 148mm),
+    "iso-b5": (176mm, 250mm), "us-letter": (215.9mm, 279.4mm), "us-legal": (215.9mm, 355.6mm),
+    "us-executive": (184.15mm, 266.7mm),
+  )
+  let s = sizes.at(meta.paper, default: (210mm, 297mm))
+  if meta.landscape { (s.at(1), s.at(0)) } else { s }
+}
+
+// Margins that keep lines to a comfortable measure: the text block is
+// `measure` wide per column and the side margins never fall below
+// `min-side`. `start-share` is the part of the spare width that goes to the
+// margin where lines begin (0.5 centres the block). Document margins win.
+#let cd-measure-margins(meta, measure, min-side: 2cm, top: 2.5cm, bottom: 2.5cm, start-share: 0.5) = {
+  let (w, h) = cd-page-dims(meta)
+  let cols = calc.max(meta.columns, 1)
+  let text-w = measure * cols + 0.04 * w * (cols - 1)
+  let spare = calc.max(2 * min-side, w - text-w)
+  let lead = calc.max(min-side, spare * start-share)
+  let trail = calc.max(min-side, spare - lead)
+  let (l, r) = if cd-rtl(meta) { (trail, lead) } else { (lead, trail) }
+  cd-margins(meta, top: top, bottom: bottom, left: l, right: r)
+}
+
+// A quiet running line for headers and footers: the document's own
+// header/footer texts at the ends, the style's content in the middle.
+#let cd-running(first, middle, last) = grid(
+  columns: (1fr, auto, 1fr),
+  align(start, first), middle, align(end, last),
+)
