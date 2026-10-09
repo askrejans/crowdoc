@@ -28,13 +28,13 @@
   show heading.where(level: 2): it => block(above: 1em, below: 0.4em, sticky: true, text(font: meta.fonts.heading, size: 10pt, weight: "bold", it.body))
   show heading.where(level: 3): it => block(above: 0.8em, below: 0.3em, sticky: true, text(font: meta.fonts.heading, size: meta.font-size, weight: "bold", fill: muted, it.body))
 
-  block(width: 100%, fill: accent, inset: (x: 14pt, y: 12pt), radius: 4pt, {
+  if meta.title != none or meta.logo != none { block(width: 100%, fill: accent, inset: (x: 14pt, y: 12pt), radius: 4pt, {
     set text(fill: white, font: meta.fonts.sans)
     grid(columns: (1fr, auto), align(horizon, {
       text(font: meta.fonts.heading, size: 20pt, weight: "bold", hyphenate: false, meta.title)
       if meta.subtitle != none { linebreak(); text(size: 10.5pt, meta.subtitle) }
     }), if meta.logo != none { image(meta.logo, height: 1.1cm) })
-  })
+  }) }
   if meta.summary != none or meta.abstract != none {
     v(0.6em)
     block(text(size: 10.5pt, weight: "medium", if meta.abstract != none { meta.abstract } else { meta.summary }))

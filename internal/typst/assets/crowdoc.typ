@@ -96,6 +96,21 @@
   th.insert("mono", meta.fonts.mono)
   let tm = meta.terms
   set page(fill: meta.colors.at("page", default: auto))
+  // Optional furniture: the style's own header and footer, removed, or a
+  // quiet generic one added to a style that has none.
+  let quiet = (size: 8pt, fill: th.at("muted", default: luma(110)))
+  set page(header: none) if meta.at("header-mode", default: "style") == "off"
+  set page(footer: none) if meta.at("footer-mode", default: "style") == "off"
+  set page(header: context {
+    if meta.show-title and here().page() == 1 { return }
+    set text(..quiet)
+    grid(columns: (1fr, auto), meta.short-title,
+      if meta.at("footer-mode", default: "style") == "off" { str(counter(page).get().first()) })
+  }) if meta.at("header-mode", default: "style") == "add"
+  set page(footer: context {
+    set text(..quiet)
+    align(center, str(counter(page).get().first()))
+  }) if meta.at("footer-mode", default: "style") == "add"
 
   set document(
     title: meta.title-text,

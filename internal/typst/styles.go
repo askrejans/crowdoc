@@ -1,6 +1,7 @@
 package typst
 
 import (
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -41,6 +42,26 @@ func register(s *Style) {
 	for _, a := range s.Aliases {
 		registry[a] = s
 	}
+}
+
+// HasHeader reports whether the style's design has a running header.
+func (s *Style) HasHeader() bool { return s.furniture(headerRe) }
+
+// HasFooter reports whether the style's design has a footer (usually the
+// page number).
+func (s *Style) HasFooter() bool { return s.furniture(footerRe) }
+
+var (
+	headerRe = regexp.MustCompile(`(?m)^\s*header:\s*[^n\s]`)
+	footerRe = regexp.MustCompile(`(?m)^\s*footer:\s*[^n\s]`)
+)
+
+func (s *Style) furniture(re *regexp.Regexp) bool {
+	if s.File == "" {
+		return true
+	}
+	src, err := files.ReadFile("styles/" + s.File)
+	return err != nil || re.Match(src)
 }
 
 // LookupStyle finds a style by name or alias (case-insensitive).

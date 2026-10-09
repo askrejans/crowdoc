@@ -47,7 +47,7 @@
     (t.at("from", default: "From") + ":", from),
     (t.at("cc", default: "CC") + ":", meta.cc),
     (t.at("date", default: "Date") + ":", meta.date),
-    (t.at("subject", default: "Subject") + ":", text(weight: "bold", meta.title)),
+    (t.at("subject", default: "Subject") + ":", if meta.title != none { text(weight: "bold", meta.title) }),
   ), label-style: (weight: "bold", fill: muted, font: meta.fonts.heading, size: 0.9em), row-gutter: 0.55em)
   v(0.5em)
   line(length: 100%, stroke: 0.5pt + muted.lighten(50%))

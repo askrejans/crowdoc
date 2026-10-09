@@ -36,9 +36,11 @@
   show heading.where(level: 3): it => block(above: 1.2em, below: 0.5em, sticky: true, text(font: meta.fonts.heading, size: 11pt, weight: "bold", fill: accent, it.body))
 
   block(below: 2em, {
-    block(width: 2.2cm, height: 0.35cm, fill: accent)
-    v(0.8em)
-    text(font: meta.fonts.heading, size: 34pt, weight: "bold", tracking: -0.02em, hyphenate: false, meta.title)
+    if meta.title != none {
+      block(width: 2.2cm, height: 0.35cm, fill: accent)
+      v(0.8em)
+      text(font: meta.fonts.heading, size: 34pt, weight: "bold", tracking: -0.02em, hyphenate: false, meta.title)
+    }
     if meta.subtitle != none { v(0.4em); text(size: 15pt, fill: muted, meta.subtitle) }
     if meta.summary != none { v(1em); block(width: 90%, text(size: 12pt, fill: cd-tint(meta, ink, 10%), meta.summary)) }
     let bits = (cd-names(meta).join(", "), meta.date).filter(x => x != none and x != "")

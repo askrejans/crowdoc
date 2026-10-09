@@ -34,7 +34,7 @@
   show heading.where(level: 3): it => block(above: 0.8em, below: 0.4em, text(font: meta.fonts.heading, size: 22pt, weight: "bold", fill: accent, it.body))
   show figure: set image(height: 11cm)
   // Title slide
-  page(footer: none, fill: ink, {
+  if meta.title != none { page(footer: none, fill: ink, {
     set text(fill: white)
     v(1fr)
     block(width: 3cm, height: 0.35cm, fill: accent)
@@ -43,6 +43,6 @@
     if meta.subtitle != none { v(0.3em); text(size: 24pt, fill: white.darken(20%), meta.subtitle) }
     v(1fr)
     text(size: 16pt, fill: white.darken(25%), cd-join((cd-names(meta).join(", "), meta.date), sep: [ · ]))
-  })
+  }) }
   body
 }

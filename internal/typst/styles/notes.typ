@@ -31,12 +31,12 @@
     it.body
   }))
   show heading.where(level: 3): it => block(above: 1em, below: 0.4em, sticky: true, text(font: meta.fonts.heading, size: meta.font-size, weight: "bold", it.body))
-  block(below: 1.4em, {
+  if meta.title != none { block(below: 1.4em, {
     text(font: meta.fonts.heading, size: 22pt, weight: "bold", meta.title)
     if meta.subtitle != none { linebreak(); text(size: 12pt, fill: muted, meta.subtitle) }
     v(0.3em)
     line(length: 100%, stroke: 1pt + accent)
-  })
+  }) }
   if meta.abstract != none { callout(kind: "abstract", title: meta.terms.at("summary", default: "Summary"), meta.abstract) }
   if meta.toc { cd-outlines(meta) }
   body

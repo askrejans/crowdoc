@@ -24,7 +24,7 @@
   show heading.where(level: 2): it => block(above: 1em, below: 0.4em, sticky: true, text(font: meta.fonts.heading, size: 11pt, weight: "bold", fill: accent, it.body))
   show heading.where(level: 3): it => block(above: 0.8em, below: 0.3em, sticky: true, text(font: meta.fonts.heading, size: meta.font-size, weight: "bold", it.body))
   // Masthead
-  block(width: 100%, below: 0.8em, {
+  if meta.title != none { block(width: 100%, below: 0.8em, {
     line(length: 100%, stroke: 2.5pt + ink)
     v(0.4em)
     grid(columns: (1fr, auto),
@@ -41,7 +41,7 @@
       align(right, upper(if meta.date != none { meta.date })))
     v(-0.5em)
     line(length: 100%, stroke: 0.6pt + ink)
-  })
+  }) }
   if meta.summary != none { block(below: 0.8em, text(size: 12pt, style: "italic", meta.summary)) }
   columns(if meta.columns > 1 { meta.columns } else { 3 }, gutter: 1em, body)
 }

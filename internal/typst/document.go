@@ -58,6 +58,9 @@ type Settings struct {
 	// ShowTitle prints the title block. A title derived from the file name
 	// is only printed on a title page unless the document asks for it.
 	ShowTitle bool
+	// HeaderMode and FooterMode are "style" (the style's design), "off"
+	// (removed) or "add" (forced on in a style that has none).
+	HeaderMode, FooterMode string
 }
 
 // Render converts doc into a Typst bundle.
@@ -160,11 +163,25 @@ func firstClass(a ast.Attr) string {
 	return a.Classes[0]
 }
 
+func furnitureMode(show *bool, designed bool) string {
+	switch {
+	case show == nil:
+		return "style"
+	case !*show:
+		return "off"
+	case designed:
+		return "style"
+	}
+	return "add"
+}
+
 func resolveSettings(doc *ast.Document, st *Style) Settings {
 	s := Settings{NumberSections: st.NumberSections, TitlePage: st.TitlePage && !doc.Meta.NoTitlePage}
 	if doc.Meta.NumberSections != nil {
 		s.NumberSections = *doc.Meta.NumberSections
 	}
+	s.HeaderMode = furnitureMode(doc.Meta.ShowHeader, st.HasHeader())
+	s.FooterMode = furnitureMode(doc.Meta.ShowFooter, st.HasFooter())
 	if doc.Meta.ShowTitle != nil {
 		s.ShowTitle = *doc.Meta.ShowTitle
 	} else {
@@ -232,6 +249,8 @@ func (w *writer) metaDict(doc *ast.Document, o Options, s Settings) string {
 	// running title are none when the title block is hidden.
 	d.add("title-text", str(m.Title))
 	d.add("show-title", boolean(s.ShowTitle))
+	d.add("header-mode", str(s.HeaderMode))
+	d.add("footer-mode", str(s.FooterMode))
 	if s.ShowTitle {
 		d.add("title", textContent(m.Title))
 		d.add("subtitle", opt(m.Subtitle))

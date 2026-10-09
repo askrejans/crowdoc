@@ -130,6 +130,18 @@ func Apply(m *ast.Meta, values map[string]any, parse ParseBlocks) []string {
 			} else {
 				warn("frontmatter %q: expected true or false", rawKey)
 			}
+		case "show-header", "running-header", "header":
+			if b, ok := Bool(v); ok {
+				m.ShowHeader = &b
+			} else {
+				warn("frontmatter %q: expected true or false", rawKey)
+			}
+		case "show-footer", "page-numbers", "footer":
+			if b, ok := Bool(v); ok {
+				m.ShowFooter = &b
+			} else {
+				warn("frontmatter %q: expected true or false", rawKey)
+			}
 		case "signatures":
 			if b, ok := Bool(v); ok {
 				m.Signatures = &b

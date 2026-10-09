@@ -35,13 +35,15 @@
   show heading.where(level: 1): set heading(numbering: none)
 
   align(center, block(below: 2.4em, {
-    v(1.5cm)
-    cd-balanced(text(size: 24pt, weight: "regular", tracking: 0.02em, hyphenate: false, meta.title))
-    if meta.subtitle != none { v(0.6em); text(size: 13pt, style: "italic", fill: muted, meta.subtitle) }
-    v(1em)
-    ornament
-    v(0.6em)
     let names = cd-names(meta)
+    if meta.title != none {
+      v(1.5cm)
+      cd-balanced(text(size: 24pt, weight: "regular", tracking: 0.02em, hyphenate: false, meta.title))
+      if meta.subtitle != none { v(0.6em); text(size: 13pt, style: "italic", fill: muted, meta.subtitle) }
+      v(1em)
+      ornament
+      v(0.6em)
+    }
     if names.len() > 0 { text(size: 11pt, tracking: 0.1em, smallcaps(lower(names.join(", ")))) }
     if meta.date != none { v(0.3em); text(size: 9.5pt, fill: muted, style: "italic", meta.date) }
   }))
