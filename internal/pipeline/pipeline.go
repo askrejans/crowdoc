@@ -28,10 +28,17 @@ type prepared struct {
 	src      Source
 	// bibliography is the formatted reference list (nil when none).
 	bibliography *bibResult
+	// Loaded once for citation formatting and portable Markdown export.
+	referencesLoaded bool
+	references       []ast.Reference
+	referenceFiles   map[string]bool
 }
 
 // prepare reads and normalises the source.
 func prepare(ctx context.Context, src Source, opts Options) (*prepared, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	p := &prepared{src: src}
 	data := src.Data
 	if src.Path != "" {

@@ -44,6 +44,8 @@ type MarkdownResult struct {
 // returned in Files and linked relatively, so the Markdown and its files
 // form a self-contained directory; remote images stay links. Untrusted
 // sources follow the usual rules: no files outside BaseDir, no network.
+// Resolved bibliographies are embedded as CSL frontmatter so citations also
+// survive moving the exported directory away from the original input.
 func Markdown(ctx context.Context, src Source, opts Options, mopts MarkdownOptions) (*MarkdownResult, error) {
 	dir, err := cleanMediaDir(mopts.MediaDir)
 	if err != nil {
@@ -57,6 +59,7 @@ func Markdown(ctx context.Context, src Source, opts Options, mopts MarkdownOptio
 		return nil, err
 	}
 	doc := p.Doc()
+	bibWarns := p.EmbedBibliography(opts.internal())
 	base := p.BaseDir()
 	resolver := media.NewResolver(ctx, doc.Resources, media.Options{
 		BaseDir:         base,
@@ -72,6 +75,7 @@ func Markdown(ctx context.Context, src Source, opts Options, mopts MarkdownOptio
 		return nil, err
 	}
 	warns := append(append([]string(nil), p.Warnings()...), res.Warnings...)
+	warns = append(warns, bibWarns...)
 	return &MarkdownResult{Text: res.Text, Files: res.Files, Document: doc, Warnings: warns}, nil
 }
 

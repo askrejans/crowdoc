@@ -3,7 +3,6 @@ package media
 import (
 	"bytes"
 	"encoding/binary"
-	"image"
 	"image/png"
 
 	_ "golang.org/x/image/bmp" // DIB decoding
@@ -157,7 +156,7 @@ func dibToImage(dib []byte) ([]byte, string, bool) {
 	binary.LittleEndian.PutUint32(file[2:], uint32(14+len(dib)))
 	binary.LittleEndian.PutUint32(file[10:], uint32(pixelOffset))
 	file = append(file, dib...)
-	img, _, err := image.Decode(bytes.NewReader(file))
+	img, err := decodeRaster(file)
 	if err != nil {
 		return nil, "", false
 	}

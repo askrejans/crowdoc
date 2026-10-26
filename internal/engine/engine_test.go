@@ -1,9 +1,11 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -57,5 +59,70 @@ func TestTypstCompile(t *testing.T) {
 	cancel()
 	if _, err := e.Compile(ctx, &Job{Files: map[string][]byte{"main.typ": []byte("x")}}); err == nil {
 		t.Fatal("cancelled context accepted")
+	}
+}
+
+func TestWriteFilesConfinesSymlinks(t *testing.T) {
+	dir, outside := t.TempDir(), t.TempDir()
+	secret := filepath.Join(outside, "secret.typ")
+	if err := os.WriteFile(secret, []byte("original"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, link := range []struct{ target, name string }{
+		{secret, "main.typ"},
+		{outside, "assets"},
+	} {
+		if err := os.Symlink(link.target, filepath.Join(dir, link.name)); err != nil {
+			t.Skipf("symlinks unavailable: %v", err)
+		}
+	}
+	for _, name := range []string{"main.typ", "assets/secret.typ"} {
+		if err := writeFiles(dir, map[string][]byte{name: []byte("overwrite")}); err == nil {
+			t.Fatalf("bundle write escaped through %s", name)
+		}
+	}
+	data, err := os.ReadFile(secret)
+	if err != nil || string(data) != "original" {
+		t.Fatalf("outside file was changed: %q, %v", data, err)
+	}
+}
+
+func TestTypstRejectsEntryEscapeBeforeWriting(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "work")
+	_, err := (&Typst{}).Compile(context.Background(), &Job{WorkDir: dir, Main: "../outside.typ"})
+	if err == nil || !strings.Contains(err.Error(), "invalid entry path") {
+		t.Fatalf("entry escape accepted: %v", err)
+	}
+	if _, err := os.Stat(dir); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("invalid job created work directory: %v", err)
+	}
+}
+
+func TestTypstRelativeWorkDir(t *testing.T) {
+	bin := os.Getenv("CROWDOC_TYPST")
+	if bin == "" {
+		t.Skip("CROWDOC_TYPST not set")
+	}
+	t.Chdir(t.TempDir())
+	res, err := (&Typst{Path: bin}).Compile(context.Background(), &Job{
+		WorkDir: "work", Files: map[string][]byte{"main.typ": []byte("Relative work directory")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.HasPrefix(res.PDF, []byte("%PDF-")) {
+		t.Fatal("not a PDF")
+	}
+}
+
+func TestTypstFontPathsBecomeAbsolute(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	if err := os.Mkdir("fonts", 0o700); err != nil {
+		t.Fatal(err)
+	}
+	args := (&Typst{FontPaths: []string{"fonts"}}).fontArgs()
+	if len(args) != 2 || args[0] != "--font-path" || args[1] != filepath.Join(dir, "fonts") {
+		t.Fatalf("font path would be resolved relative to the compile workdir: %v", args)
 	}
 }

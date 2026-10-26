@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -24,22 +23,38 @@ func batchOutputs(batchDir, outDir string, files []string) map[string]string {
 		rel, _ := filepath.Rel(batchDir, f)
 		return filepath.Join(outDir, strings.TrimSuffix(rel, filepath.Ext(rel))+".pdf")
 	}
-	count := map[string]int{}
-	inputs := map[string]bool{}
-	for _, f := range files {
-		count[plain(f)]++
-		abs, _ := filepath.Abs(f)
-		inputs[abs] = true
+	key := func(p string) string {
+		abs, _ := filepath.Abs(p)
+		// Avoid collisions on the default Windows and macOS filesystems.
+		if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+			abs = strings.ToLower(abs)
+		}
+		return abs
 	}
-	outs := make(map[string]string, len(files))
+	count := map[string]int{}
+	used := map[string]bool{}
 	for _, f := range files {
+		count[key(plain(f))]++
+		used[key(f)] = true
+	}
+	// Allocate in a stable order, independent of directory traversal order.
+	ordered := append([]string(nil), files...)
+	sort.Strings(ordered)
+	outs := make(map[string]string, len(files))
+	for _, f := range ordered {
 		out := plain(f)
-		if abs, _ := filepath.Abs(out); count[out] > 1 || inputs[abs] {
+		plainKey := key(out)
+		if count[plainKey] > 1 || used[plainKey] {
 			rel, _ := filepath.Rel(batchDir, f)
 			ext := filepath.Ext(rel)
 			out = filepath.Join(outDir, strings.TrimSuffix(rel, ext)+"-"+strings.ToLower(strings.TrimPrefix(ext, "."))+".pdf")
 		}
+		base := strings.TrimSuffix(out, ".pdf")
+		for n := 2; used[key(out)] || (key(out) != plainKey && count[key(out)] > 0); n++ {
+			out = fmt.Sprintf("%s-%d.pdf", base, n)
+		}
 		outs[f] = out
+		used[key(out)] = true
 	}
 	return outs
 }
@@ -55,10 +70,13 @@ func runBatch(ctx context.Context, c *cli, opts crowdoc.Options, stdout, stderr 
 	var files []string
 	err := filepath.WalkDir(c.batchDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			return err
+		}
+		if err := ctx.Err(); err != nil {
+			return err
 		}
 		if d.IsDir() {
-			if abs, _ := filepath.Abs(path); abs == absOut || (strings.HasPrefix(d.Name(), ".") && path != c.batchDir) {
+			if abs, _ := filepath.Abs(path); (abs == absOut && path != c.batchDir) || (strings.HasPrefix(d.Name(), ".") && path != c.batchDir) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -84,6 +102,7 @@ func runBatch(ctx context.Context, c *cli, opts crowdoc.Options, stdout, stderr 
 	if jobs <= 0 {
 		jobs = min(runtime.NumCPU(), 4)
 	}
+	jobs = min(jobs, len(files))
 	if opts.Engine == nil {
 		// Share one engine so the font list is computed once.
 		path, err := crowdoc.FindTypst()
@@ -102,9 +121,17 @@ func runBatch(ctx context.Context, c *cli, opts crowdoc.Options, stdout, stderr 
 	failed := 0
 	sem := make(chan struct{}, jobs)
 	var wg sync.WaitGroup
+schedule:
 	for _, f := range files {
+		if ctx.Err() != nil {
+			break
+		}
+		select {
+		case sem <- struct{}{}:
+		case <-ctx.Done():
+			break schedule
+		}
 		wg.Add(1)
-		sem <- struct{}{}
 		go func(f string) {
 			defer wg.Done()
 			defer func() { <-sem }()
@@ -127,51 +154,12 @@ func runBatch(ctx context.Context, c *cli, opts crowdoc.Options, stdout, stderr 
 		}(f)
 	}
 	wg.Wait()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	fmt.Fprintf(stdout, "Done: %d/%d PDFs in %s (%s)\n", len(files)-failed, len(files), outDir, time.Since(start).Round(time.Millisecond))
 	if failed > 0 {
 		return fmt.Errorf("%d of %d conversions failed", failed, len(files))
 	}
 	return nil
-}
-
-// runWatch regenerates the PDF whenever the input (or a bibliography file)
-// changes. The compilation directory is reused, so rebuilds are fast.
-func runWatch(ctx context.Context, c *cli, opts crowdoc.Options, stdout, stderr io.Writer) error {
-	if opts.WorkDir == "" {
-		dir, err := os.MkdirTemp("", "crowdoc-watch-*")
-		if err != nil {
-			return err
-		}
-		defer os.RemoveAll(dir)
-		opts.WorkDir = dir
-	}
-	watched := append([]string{c.input}, c.bibs...)
-	stamp := func() string {
-		var sb strings.Builder
-		for _, p := range watched {
-			if fi, err := os.Stat(p); err == nil {
-				fmt.Fprintf(&sb, "%s|%d|%d;", p, fi.ModTime().UnixNano(), fi.Size())
-			}
-		}
-		return sb.String()
-	}
-	fmt.Fprintf(stdout, "Watching %s (Ctrl+C to stop)\n", c.input)
-	last := ""
-	ticker := time.NewTicker(300 * time.Millisecond)
-	defer ticker.Stop()
-	for {
-		if s := stamp(); s != last {
-			last = s
-			if err := convertOne(ctx, c, c.input, c.output, opts, stdout, stderr); err != nil {
-				fmt.Fprintln(stderr, "crowdoc:", err)
-			} else if !c.quiet {
-				fmt.Fprintf(stdout, "  updated at %s\n", time.Now().Format("15:04:05"))
-			}
-		}
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-ticker.C:
-		}
-	}
 }

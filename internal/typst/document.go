@@ -81,7 +81,7 @@ func Render(doc *ast.Document, o Options) (*Bundle, error) {
 		return nil, err
 	}
 
-	w := &writer{hooks: o.Hooks, labels: collectLabels(doc), unsafe: o.Unsafe}
+	w := &writer{hooks: o.Hooks, labels: collectLabels(doc), unsafe: o.Unsafe, referenceTitle: doc.Meta.ReferenceSectionTitle}
 	w.linksNote = o.Style.LinksAsNotes
 	if doc.Meta.LinksAsNotes != nil {
 		w.linksNote = *doc.Meta.LinksAsNotes

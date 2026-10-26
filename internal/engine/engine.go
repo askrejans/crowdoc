@@ -15,7 +15,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -133,6 +132,14 @@ func (t *Typst) fontArgs(extra ...string) []string {
 	var args []string
 	seen := map[string]bool{}
 	for _, p := range append(append([]string(nil), t.FontPaths...), extra...) {
+		if p == "" {
+			continue
+		}
+		abs, err := filepath.Abs(p)
+		if err != nil {
+			continue
+		}
+		p = abs
 		if seen[p] {
 			continue
 		}
@@ -172,6 +179,16 @@ func (t *Typst) Fonts(ctx context.Context) (map[string]bool, error) {
 // Compile implements Engine.
 func (t *Typst) Compile(ctx context.Context, job *Job) (*Result, error) {
 	start := time.Now()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	main := job.Main
+	if main == "" {
+		main = "main.typ"
+	}
+	if !filepath.IsLocal(main) {
+		return nil, fmt.Errorf("invalid entry path %q", main)
+	}
 	dir := job.WorkDir
 	if dir == "" {
 		tmp, err := os.MkdirTemp("", "crowdoc-*")
@@ -183,12 +200,13 @@ func (t *Typst) Compile(ctx context.Context, job *Job) (*Result, error) {
 	} else if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}
-	if err := writeFiles(dir, job.Files); err != nil {
+	// Typst's paths must stay absolute when the process changes to WorkDir.
+	dir, err := filepath.Abs(dir)
+	if err != nil {
 		return nil, err
 	}
-	main := job.Main
-	if main == "" {
-		main = "main.typ"
+	if err := writeFiles(dir, job.Files); err != nil {
+		return nil, err
 	}
 	out := filepath.Join(dir, "output.pdf")
 	_ = os.Remove(out)
@@ -231,31 +249,6 @@ func typstEnv() []string {
 		out = append(out, kv)
 	}
 	return out
-}
-
-func writeFiles(dir string, files map[string][]byte) error {
-	names := make([]string, 0, len(files))
-	for name := range files {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		clean := filepath.Clean(filepath.FromSlash(name))
-		if filepath.IsAbs(clean) || strings.HasPrefix(clean, "..") {
-			return fmt.Errorf("invalid bundle path %q", name)
-		}
-		p := filepath.Join(dir, clean)
-		if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
-			return err
-		}
-		if existing, err := os.ReadFile(p); err == nil && bytes.Equal(existing, files[name]) {
-			continue // unchanged (watch mode)
-		}
-		if err := os.WriteFile(p, files[name], 0o600); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 var diagRe = regexp.MustCompile(`^(.*?):(\d+):(\d+): (error|warning): (.*)$`)

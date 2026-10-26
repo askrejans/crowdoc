@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -278,5 +279,18 @@ func TestBookletCoverNeedsRealTitle(t *testing.T) {
 		if main := string(res.Bundle.Files["main.typ"]); !strings.Contains(main, want) {
 			t.Errorf("%s: missing %q", name, want)
 		}
+	}
+}
+
+func TestCancelledParseDoesNotMutateDocument(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	doc := &ast.Document{Blocks: []ast.Block{&ast.Heading{Level: 1, Inlines: ast.Str("Title")}}}
+	_, _, err := Parse(ctx, Source{Document: doc}, Options{})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("want cancellation, got %v", err)
+	}
+	if doc.Meta.Title != "" || len(doc.Blocks) != 1 {
+		t.Fatal("cancelled parse mutated caller document")
 	}
 }

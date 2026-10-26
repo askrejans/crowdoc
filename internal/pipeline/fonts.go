@@ -14,7 +14,13 @@ import (
 	"github.com/askrejans/crowdoc/v2/internal/typst"
 )
 
-func fontDirs(opts Options) []string { return fonts.SearchDirs(opts.FontDirs...) }
+func fontDirs(opts Options) []string {
+	dirs := opts.FontDirs
+	if typstEngine, ok := opts.Engine.(*engine.Typst); ok {
+		dirs = append(append([]string(nil), dirs...), typstEngine.FontPaths...)
+	}
+	return fonts.SearchDirs(dirs...)
+}
 
 // Default Typst engines are shared per configuration so the font list is
 // computed once per process.
@@ -57,7 +63,11 @@ func fontIndex(ctx context.Context, opts Options) map[string][]string {
 	}
 	dirs := fontDirs(opts)
 	dirs = append(dirs, fonts.TeXLiveDirs()...)
-	if !opts.DeterministicFonts {
+	deterministic := opts.DeterministicFonts
+	if typstEngine, ok := opts.Engine.(*engine.Typst); ok {
+		deterministic = deterministic || typstEngine.IgnoreSystemFonts
+	}
+	if !deterministic {
 		dirs = append(dirs, fonts.SystemDirs()...)
 	}
 	idx, _ := fonts.ScanIndex(dirs)
@@ -113,15 +123,25 @@ func resolveFonts(ctx context.Context, doc *ast.Document, st *typst.Style, opts 
 		// and sans chains themselves.
 		set.Heading = set.Sans
 	}
-	return set, warns, extraFontDirs(set, idx)
+	roots := append(fontDirs(opts), fonts.TeXLiveDirs()...)
+	return set, warns, extraFontDirs(set, idx, roots)
 }
 
-// extraFontDirs returns the TeX Live subdirectories holding the families a
-// document uses, so the engine does not scan thousands of unrelated fonts.
-func extraFontDirs(set typst.FontSet, idx map[string][]string) []string {
-	roots := fonts.TeXLiveDirs()
+// extraFontDirs passes the directories of selected non-system families to
+// the engine. This includes installed font packs and caller font directories,
+// even when a caller-provided Typst engine has no base font paths of its own.
+// Passing only selected subdirectories keeps large font trees cheap to use.
+func extraFontDirs(set typst.FontSet, idx map[string][]string, roots []string) []string {
 	if len(roots) == 0 {
 		return nil
+	}
+	// ScanIndex resolves symlinked roots; compare in the same namespace.
+	resolved := make([]string, len(roots))
+	for i, root := range roots {
+		resolved[i] = root
+		if real, err := filepath.EvalSymlinks(root); err == nil {
+			resolved[i] = real
+		}
 	}
 	lower := make(map[string][]string, len(idx))
 	for f, paths := range idx {
@@ -132,7 +152,7 @@ func extraFontDirs(set typst.FontSet, idx map[string][]string) []string {
 	for _, chain := range [][]string{set.Main, set.Sans, set.Mono, set.Math, set.Heading} {
 		for _, fam := range chain {
 			for _, p := range lower[strings.ToLower(fam)] {
-				for _, r := range roots {
+				for _, r := range resolved {
 					if strings.HasPrefix(p, r+string(filepath.Separator)) {
 						d := filepath.Dir(p)
 						if !seen[d] {

@@ -211,12 +211,12 @@ func TestReferenceTitles(t *testing.T) {
 		"Literatuur", "Bibliografi", "Kirjallisuus", "Источники", "Литература", "Список литературы",
 		"4.2 Literature",
 	} {
-		if !isReferenceTitle(s) {
+		if !IsReferenceTitle(s) {
 			t.Errorf("%q not recognised", s)
 		}
 	}
 	for _, s := range []string{"Introduction", "Reference implementation", "1. Methods", "Source code"} {
-		if isReferenceTitle(s) {
+		if IsReferenceTitle(s) {
 			t.Errorf("%q wrongly recognised", s)
 		}
 	}

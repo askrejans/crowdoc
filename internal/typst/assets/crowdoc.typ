@@ -409,11 +409,11 @@
 
 // Bibliography produced by crowdoc's citation processor.
 // entries: array of (id: str, label: str or none, body: content)
-#let cd-bibliography(title: none, numeric: false, entries) = context {
+#let cd-bibliography(title: none, show-title: true, numeric: false, entries) = context {
   let th = cd-theme.get()
   let tm = cd-terms.get()
   let ttl = if title != none { title } else { cd-term(tm, "references", "References") }
-  heading(numbering: none, ttl)
+  if show-title { heading(numbering: none, ttl) }
   set par(justify: false)
   set text(size: 0.94em)
   if numeric {

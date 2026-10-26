@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/askrejans/crowdoc/v2/ast"
+	"github.com/askrejans/crowdoc/v2/internal/transform/cite"
 )
 
 // Asset describes an image prepared for the bundle.
@@ -54,13 +55,14 @@ type Hooks struct {
 
 // writer turns AST nodes into Typst markup.
 type writer struct {
-	sb        strings.Builder
-	hooks     Hooks
-	labels    map[string]bool
-	unsafe    bool
-	warnings  []string
-	linksNote bool
-	bibDone   bool
+	sb             strings.Builder
+	hooks          Hooks
+	labels         map[string]bool
+	unsafe         bool
+	warnings       []string
+	linksNote      bool
+	bibDone        bool
+	referenceTitle string
 }
 
 func (w *writer) warn(format string, args ...any) {
@@ -79,15 +81,23 @@ func (w *writer) warn(format string, args ...any) {
 
 func (w *writer) blocks(blocks []ast.Block) string {
 	var parts []string
-	for _, b := range blocks {
-		if s := w.block(b); s != "" {
+	for i, b := range blocks {
+		showReferenceTitle := true
+		if _, ok := b.(*ast.ReferenceList); ok && i > 0 {
+			if heading, ok := blocks[i-1].(*ast.Heading); ok {
+				title := strings.TrimSpace(ast.PlainText(heading.Inlines))
+				showReferenceTitle = !cite.IsReferenceTitle(title) &&
+					!(w.referenceTitle != "" && strings.EqualFold(title, strings.TrimSpace(w.referenceTitle)))
+			}
+		}
+		if s := w.block(b, showReferenceTitle); s != "" {
 			parts = append(parts, s)
 		}
 	}
 	return strings.Join(parts, "\n\n")
 }
 
-func (w *writer) block(b ast.Block) string {
+func (w *writer) block(b ast.Block, showReferenceTitle bool) string {
 	switch n := b.(type) {
 	case *ast.Para:
 		return w.inlinesAtStart(n.Inlines)
@@ -140,7 +150,7 @@ func (w *writer) block(b ast.Block) string {
 			}
 			entries = append(entries, BibEntry{ID: e.ID, Label: label, Inlines: e.Inlines})
 		}
-		return w.bibList(entries, numeric, "", false)
+		return w.bibList(entries, numeric, w.referenceTitle, showReferenceTitle)
 	}
 	return ""
 }
@@ -473,7 +483,7 @@ func (w *writer) bibliography() string {
 	return w.bibList(entries, numeric, title, true)
 }
 
-func (w *writer) bibList(entries []BibEntry, numeric bool, title string, _ bool) string {
+func (w *writer) bibList(entries []BibEntry, numeric bool, title string, showTitle bool) string {
 	if len(entries) == 0 {
 		return ""
 	}
@@ -494,7 +504,11 @@ func (w *writer) bibList(entries []BibEntry, numeric bool, title string, _ bool)
 	if title != "" {
 		t = textContent(title)
 	}
-	return "#cd-bibliography(title: " + t + ", numeric: " + boolean(numeric) + ", (" + strings.Join(items, ", ") + ",))"
+	args := "title: " + t
+	if !showTitle {
+		args += ", show-title: false"
+	}
+	return "#cd-bibliography(" + args + ", numeric: " + boolean(numeric) + ", (" + strings.Join(items, ", ") + ",))"
 }
 
 // ---------------------------------------------------------------------------

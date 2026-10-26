@@ -140,8 +140,12 @@ func placeBibliography(doc *ast.Document) {
 // document. Untrusted documents may only use uploaded data or files inside
 // their own directory.
 func loadReferences(p *prepared, opts Options) ([]ast.Reference, []string) {
+	if p.referencesLoaded {
+		return p.references, nil
+	}
 	var refs []ast.Reference
 	var warns []string
+	p.referenceFiles = make(map[string]bool)
 	add := func(name string, data []byte) {
 		r, w, err := cite.Parse(name, data)
 		if err != nil {
@@ -152,6 +156,7 @@ func loadReferences(p *prepared, opts Options) ([]ast.Reference, []string) {
 			warns = append(warns, fmt.Sprintf("bibliography %s: %s", filepath.Base(name), x))
 		}
 		refs = append(refs, r...)
+		p.referenceFiles[name] = true
 	}
 	names := make([]string, 0, len(opts.BibliographyData))
 	for n := range opts.BibliographyData {
@@ -173,6 +178,7 @@ func loadReferences(p *prepared, opts Options) ([]ast.Reference, []string) {
 	}
 	for _, name := range p.doc.Meta.Bibliography {
 		if _, ok := opts.BibliographyData[filepath.Base(name)]; ok {
+			p.referenceFiles[name] = p.referenceFiles[filepath.Base(name)]
 			continue // supplied by the caller
 		}
 		path, ok := bibPath(p, name)
@@ -186,13 +192,48 @@ func loadReferences(p *prepared, opts Options) ([]ast.Reference, []string) {
 			continue
 		}
 		add(path, data)
+		p.referenceFiles[name] = p.referenceFiles[path]
 	}
 	if v, ok := p.doc.Meta.Extra["references"]; ok {
 		r, w := cite.FromCSLValue(v)
 		refs = append(refs, r...)
 		warns = append(warns, w...)
 	}
+	p.referencesLoaded = true
+	p.references = refs
 	return refs, warns
+}
+
+// EmbedBibliography retains the resolved citation data instead of depending on
+// bibliography files beside the original input. Unresolved paths remain in the
+// metadata so their existing warnings and opportunity for repair are preserved.
+func (p *prepared) EmbedBibliography(opts Options) []string {
+	refs, warns := loadReferences(p, opts)
+	seen := make(map[string]bool)
+	var merged []ast.Reference
+	for _, group := range [][]ast.Reference{refs, p.doc.References} {
+		for _, ref := range group {
+			id := strings.TrimSpace(ref.ID)
+			if id != "" && !seen[id] {
+				merged = append(merged, ref)
+				seen[id] = true
+			}
+		}
+	}
+	if len(merged) > 0 {
+		p.doc.References = merged
+		// The writer emits the merged CSL data, including entries originally
+		// supplied by DOCX fields, caller data or inline frontmatter.
+		delete(p.doc.Meta.Extra, "references")
+	}
+	var remaining []string
+	for _, name := range p.doc.Meta.Bibliography {
+		if !p.referenceFiles[name] {
+			remaining = append(remaining, name)
+		}
+	}
+	p.doc.Meta.Bibliography = remaining
+	return warns
 }
 
 func bibPath(p *prepared, name string) (string, bool) {

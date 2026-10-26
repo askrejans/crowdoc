@@ -101,7 +101,7 @@ func hasStructuredRefs(doc *ast.Document) bool {
 func convertSection(blocks []ast.Block) ([]ast.Block, []ast.ReferenceEntry, bool) {
 	for i := len(blocks) - 1; i >= 0; i-- {
 		h, ok := blocks[i].(*ast.Heading)
-		if !ok || !isReferenceTitle(ast.PlainText(h.Inlines)) {
+		if !ok || !IsReferenceTitle(ast.PlainText(h.Inlines)) {
 			continue
 		}
 		entries, end := collectEntries(blocks[i+1:])
@@ -125,9 +125,9 @@ func convertSection(blocks []ast.Block) ([]ast.Block, []ast.ReferenceEntry, bool
 	return blocks, nil, false
 }
 
-// isReferenceTitle matches heading text against the known titles,
+// IsReferenceTitle matches heading text against the known titles,
 // ignoring numbering ("7.", "7.1", "VII.", "A.") and a trailing colon.
-func isReferenceTitle(s string) bool {
+func IsReferenceTitle(s string) bool {
 	s = strings.ToLower(strings.TrimSpace(s))
 	s = strings.TrimRight(s, ":. \u00a0")
 	if i := strings.IndexByte(s, ' '); i > 0 && isSectionNumber(s[:i]) {

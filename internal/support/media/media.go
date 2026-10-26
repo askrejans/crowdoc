@@ -140,6 +140,17 @@ func (r *Resolver) resolve(src string) Asset {
 }
 
 func (r *Resolver) load(src string) (string, []byte, error) {
+	if err := r.ctx.Err(); err != nil {
+		return "", nil, err
+	}
+	name, data, err := r.loadSource(src)
+	if err == nil && int64(len(data)) > r.o.MaxBytes {
+		return "", nil, errors.New("image file is too large")
+	}
+	return name, data, err
+}
+
+func (r *Resolver) loadSource(src string) (string, []byte, error) {
 	lower := strings.ToLower(src)
 	switch {
 	case strings.HasPrefix(src, "res:"):
@@ -149,7 +160,7 @@ func (r *Resolver) load(src string) (string, []byte, error) {
 		}
 		return res.Name, res.Data, nil
 	case strings.HasPrefix(lower, "data:"):
-		return decodeDataURI(src)
+		return decodeDataURI(src, r.o.MaxBytes)
 	case strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://"):
 		if !r.o.AllowRemote {
 			return "", nil, errors.New("remote images are disabled (allow fetching remote images to include it)")
@@ -266,12 +277,17 @@ func (r *Resolver) prepare(name string, data []byte) Asset {
 		ext := strings.TrimPrefix(strings.ToLower(path.Ext(name)), ".")
 		return Asset{Missing: "unsupported or unrecognised image format" + extHint(ext)}
 	}
+	if format != "svg" && format != "pdf" && format != "heic" && format != "avif" {
+		if err := checkRasterSize(data); err != nil {
+			return Asset{Missing: err.Error()}
+		}
+	}
 	var a Asset
 	switch {
 	case r.o.Formats[format]:
 		a.Format = format
 	case format == "bmp" || format == "tiff" || (format == "webp" && !r.o.Formats["webp"]) || (format == "gif" && !r.o.Formats["gif"]):
-		img, _, err := image.Decode(bytes.NewReader(data))
+		img, err := decodeRaster(data)
 		if err != nil {
 			return Asset{Missing: "could not decode " + strings.ToUpper(format) + " image"}
 		}
@@ -469,7 +485,7 @@ func exifOrientation(t []byte) int {
 	return 0
 }
 
-func decodeDataURI(s string) (string, []byte, error) {
+func decodeDataURI(s string, maxBytes int64) (string, []byte, error) {
 	meta, payload, ok := strings.Cut(s[len("data:"):], ",")
 	if !ok {
 		return "", nil, errors.New("malformed data: URI")
@@ -477,13 +493,17 @@ func decodeDataURI(s string) (string, []byte, error) {
 	var data []byte
 	var err error
 	if strings.HasSuffix(strings.ToLower(meta), ";base64") {
-		clean := strings.Map(func(r rune) rune {
+		var clean strings.Builder
+		for _, r := range payload {
 			if r == ' ' || r == '\n' || r == '\r' || r == '\t' {
-				return -1
+				continue
 			}
-			return r
-		}, payload)
-		data, err = decodeBase64(clean)
+			clean.WriteRune(r)
+			if int64(clean.Len())/4 > maxBytes/3+1 {
+				return "", nil, errors.New("image file is too large")
+			}
+		}
+		data, err = decodeBase64(clean.String())
 	} else {
 		var u string
 		u, err = url.PathUnescape(payload)

@@ -3,6 +3,7 @@ package media
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/binary"
 	"image"
 	"image/color"
@@ -184,5 +185,39 @@ func TestMetafileBitmaps(t *testing.T) {
 	// A vector-only metafile is not a bitmap.
 	if _, _, ok := metafileBitmap([]byte{1, 0, 9, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0}); ok {
 		t.Fatal("empty metafile reported a bitmap")
+	}
+}
+
+func TestImageByteLimitAppliesToEmbeddedSources(t *testing.T) {
+	data := pngBytes(t, 1, 1)
+	res := ast.NewResources()
+	embedded := res.Add("small.png", "image/png", data)
+	r := NewResolver(context.Background(), res, Options{MaxBytes: int64(len(data) - 1)})
+	for _, src := range []string{embedded, "data:image/png;base64," + base64.StdEncoding.EncodeToString(data)} {
+		if _, _, err := r.Load(src); err == nil || !strings.Contains(err.Error(), "too large") {
+			t.Fatalf("embedded byte limit bypassed: %v", err)
+		}
+		if a := r.Resolve(src); a.Path != "" || !strings.Contains(a.Missing, "too large") {
+			t.Fatalf("oversized embedded image was included: %+v", a)
+		}
+	}
+}
+
+func TestRasterDimensionsLimitedBeforeDecode(t *testing.T) {
+	var buf bytes.Buffer
+	if err := bmp.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 1, 1))); err != nil {
+		t.Fatal(err)
+	}
+	data := buf.Bytes()
+	binary.LittleEndian.PutUint32(data[18:], 65535)
+	binary.LittleEndian.PutUint32(data[22:], 65535)
+	res := ast.NewResources()
+	src := res.Add("huge.bmp", "image/bmp", data)
+	r := NewResolver(context.Background(), res, Options{})
+	if a := r.Resolve(src); a.Path != "" || !strings.Contains(a.Missing, "dimensions are too large") {
+		t.Fatalf("huge bitmap was decoded: %+v", a)
+	}
+	if _, err := decodeRaster(data); err == nil {
+		t.Fatal("metafile bitmap decoder accepted huge dimensions")
 	}
 }
