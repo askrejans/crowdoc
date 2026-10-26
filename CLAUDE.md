@@ -1,6 +1,6 @@
 # crowdoc — development guide
 
-Module `github.com/askrejans/crowdoc/v2` (Go 1.26). GPL-3.0. A general-purpose
+Module `github.com/askrejans/crowdoc/v2` (Go 1.27.3). GPL-3.0. A general-purpose
 open-source library and CLI: keep everything generic — no references to any
 particular product, company deployment or service that uses it.
 
