@@ -23,10 +23,16 @@ func gridLayout(rows []ast.Row) ([][]placedCell, int) {
 	for r, row := range rows {
 		c := 0
 		for _, cell := range row.Cells {
-			for occupied[[2]int{r, c}] {
-				c++
-			}
 			cs, rs := max(cell.ColSpan, 1), max(cell.RowSpan, 1)
+			// A free starting column can still span into an earlier row's cell.
+			for offset := 0; offset < cs; {
+				if occupied[[2]int{r, c + offset}] {
+					c += offset + 1
+					offset = 0
+				} else {
+					offset++
+				}
+			}
 			if r+rs > len(rows) {
 				rs = len(rows) - r
 				cell.RowSpan = rs
@@ -162,7 +168,7 @@ func alignName(a ast.Align) string {
 
 func (w *writer) cell(pc placedCell) string {
 	body := w.cellContent(pc.cell.Blocks)
-	var args []string
+	args := []string{"x: " + strconv.Itoa(pc.col), "y: " + strconv.Itoa(pc.row)}
 	if pc.cell.ColSpan > 1 {
 		args = append(args, "colspan: "+strconv.Itoa(pc.cell.ColSpan))
 	}
@@ -171,9 +177,6 @@ func (w *writer) cell(pc placedCell) string {
 	}
 	if pc.cell.Align != ast.AlignDefault {
 		args = append(args, "align: "+alignName(pc.cell.Align))
-	}
-	if len(args) == 0 {
-		return content(body)
 	}
 	return "table.cell(" + strings.Join(args, ", ") + ")" + content(body)
 }
